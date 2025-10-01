@@ -1,15 +1,29 @@
 package com.clientemultihilos;
 
-public class ParaRecibir implements Runnable {
-    private ClienteMultiHilos cliente;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.Socket;
 
-    public ParaRecibir(ClienteMultiHilos cliente) {
-        this.cliente = cliente;
+public class ParaRecibir implements Runnable {
+    
+    final DataInputStream entrada;
+
+    public ParaRecibir(Socket s) throws IOException {
+        entrada = new DataInputStream(s.getInputStream());
     }
 
     @Override
     public void run() {
-        cliente.recibirMensaje();
+        String mensaje;
+        mensaje = "";
+        while(true){
+            try {
+                mensaje = entrada.readUTF();
+                System.out.println(mensaje);
+            } catch (IOException ex) {
+            }
+        }
     }
-    
+
 }
+ 
