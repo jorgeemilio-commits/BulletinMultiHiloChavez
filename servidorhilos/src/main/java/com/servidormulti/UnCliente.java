@@ -27,10 +27,19 @@ public class UnCliente implements Runnable {
             try {
                 mensaje = entrada.readUTF();
                 if(mensaje.startsWith("@")){
-                    String[] partes = mensaje.split(" ");
-                    String aQuien = partes[0].substring(1);
-                    UnCliente cliente = ServidorMulti.clientes.get(aQuien);
-                    cliente.salida.writeUTF("Mensaje privado: " + partes[1]);;
+                    int divMensaje = mensaje.indexOf(" ");
+                    if (divMensaje == -1) {
+                    continue; // no hay espacio, no es un mensaje válido
+                }
+                String destino = mensaje.substring(1, divMensaje); 
+                String contenido = mensaje.substring(divMensaje + 1).trim();
+                String[] partes = destino.split("-"); // divide por guión para saber los usuarios
+                for (String aQuien : partes) {
+                UnCliente cliente = ServidorMulti.clientes.get(aQuien);
+                if (cliente != null) { //si el usuario existe
+                cliente.salida.writeUTF(contenido);
+                }
+                }
                 } else {
                 for (UnCliente unCliente : ServidorMulti.clientes.values()) {
                     unCliente.salida.writeUTF(mensaje);
