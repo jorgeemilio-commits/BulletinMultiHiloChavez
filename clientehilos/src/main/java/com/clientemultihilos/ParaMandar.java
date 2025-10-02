@@ -3,10 +3,11 @@ package com.clientemultihilos;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 
 public class ParaMandar implements Runnable {
-    final BufferedReader teclado = new BufferedReader(new java.io.InputStreamReader(System.in));
+    final BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in));
 
     final DataOutputStream salida;
 

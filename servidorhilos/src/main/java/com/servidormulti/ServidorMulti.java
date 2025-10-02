@@ -5,7 +5,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 
-public class ServidorMultiHilos {
+public class ServidorMulti {
 
     static HashMap<String, UnCliente> clientes = new HashMap<String,UnCliente>();
 
@@ -19,6 +19,7 @@ public class ServidorMultiHilos {
             Thread hilo = new Thread(unCliente);
             clientes.put(Integer.toString(contador) , unCliente);
             hilo.start();
+            System.out.println("Se conecto el chango # " + contador );
             contador++;
         }
     }
