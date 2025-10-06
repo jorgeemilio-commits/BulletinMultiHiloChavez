@@ -23,6 +23,8 @@ public class UnCliente implements Runnable {
     @Override
     public void run() {
         String mensaje;
+        System.out.println("Hilo " + Thread.currentThread().getName() + " iniciado.");
+        System.out.println("Para enviar mensaje es @id y para multiples es @id-id-id");
         while (true) {
             try {
                 mensaje = entrada.readUTF();
@@ -37,12 +39,12 @@ public class UnCliente implements Runnable {
                 for (String aQuien : partes) {
                 UnCliente cliente = ServidorMulti.clientes.get(aQuien);
                 if (cliente != null) { //si el usuario existe
-                cliente.salida.writeUTF(contenido + " enviado por " + Thread.currentThread().getName());
+                cliente.salida.writeUTF(Thread.currentThread().getName() + ": " + contenido);
                 }
                 }
                 } else {
                 for (UnCliente unCliente : ServidorMulti.clientes.values()) {
-                    unCliente.salida.writeUTF(mensaje + " enviado por " + Thread.currentThread().getName());
+                    unCliente.salida.writeUTF(Thread.currentThread().getName() + ": " + mensaje);
                     }
                 }
             } catch (Exception ex) {
