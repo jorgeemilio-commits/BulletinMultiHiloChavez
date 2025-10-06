@@ -37,12 +37,12 @@ public class UnCliente implements Runnable {
                 for (String aQuien : partes) {
                 UnCliente cliente = ServidorMulti.clientes.get(aQuien);
                 if (cliente != null) { //si el usuario existe
-                cliente.salida.writeUTF(contenido);
+                cliente.salida.writeUTF(contenido + " enviado por " + Thread.currentThread().getName());
                 }
                 }
                 } else {
                 for (UnCliente unCliente : ServidorMulti.clientes.values()) {
-                    unCliente.salida.writeUTF(mensaje);
+                    unCliente.salida.writeUTF(mensaje + " enviado por " + Thread.currentThread().getName());
                     }
                 }
             } catch (Exception ex) {
