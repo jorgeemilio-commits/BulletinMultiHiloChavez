@@ -5,6 +5,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.io.IOException;
 
 public class UnCliente implements Runnable {
     
@@ -14,11 +15,15 @@ public class UnCliente implements Runnable {
 
     final DataInputStream entrada;
 
-    UnCliente(Socket s) throws java.io.IOException {
+    final String clienteID;
+
+    UnCliente(Socket s, String id) throws java.io.IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
         this.entrada = new DataInputStream(s.getInputStream());
+        this.clienteID = id;
     }
     
+
 
     @Override
     public void run() {
@@ -37,14 +42,18 @@ public class UnCliente implements Runnable {
                 String contenido = mensaje.substring(divMensaje + 1).trim();
                 String[] partes = destino.split("-"); // divide por guión para saber los usuarios
                 for (String aQuien : partes) {
-                UnCliente cliente = ServidorMulti.clientes.get(aQuien);
-                if (cliente != null) { //si el usuario existe
-                cliente.salida.writeUTF(Thread.currentThread().getName() + ": " + contenido);
-                }
-                }
+                    UnCliente cliente = ServidorMulti.clientes.get(aQuien);
+                        if (cliente != null) { //si el usuario existe
+                            if (!cliente.clienteID.equals(this.clienteID)){
+                            cliente.salida.writeUTF(Thread.currentThread().getName() + ": " + contenido);              
+                            }
+                        }
+                   }
                 } else {
-                for (UnCliente unCliente : ServidorMulti.clientes.values()) {
-                    unCliente.salida.writeUTF(Thread.currentThread().getName() + ": " + mensaje);
+                    for (UnCliente unCliente : ServidorMulti.clientes.values()) {
+                        if (!unCliente.clienteID.equals(this.clienteID)){
+                            unCliente.salida.writeUTF(Thread.currentThread().getName() + ": " + mensaje);              
+                            }
                     }
                 }
             } catch (Exception ex) {

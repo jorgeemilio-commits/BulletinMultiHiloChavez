@@ -16,7 +16,7 @@ public class ServidorMulti {
         while (true) {
             Socket s = servidorSocket.accept();
             String clienteId = Integer.toString(contador);
-            UnCliente unCliente = new UnCliente(s);
+            UnCliente unCliente = new UnCliente(s, clienteId);
             Thread hilo = new Thread(unCliente, "Cliente-" + clienteId);
             clientes.put(clienteId , unCliente);
             hilo.start();
