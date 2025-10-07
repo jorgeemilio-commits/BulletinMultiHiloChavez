@@ -53,12 +53,18 @@ public class UnCliente implements Runnable {
                     for (UnCliente unCliente : ServidorMulti.clientes.values()) {
                         if (!unCliente.clienteID.equals(this.clienteID)){
                             unCliente.salida.writeUTF(Thread.currentThread().getName() + ": " + mensaje);              
-                            }
+                        }
                     }
                 }
             } catch (Exception ex) {
+                try {
+                    this.entrada.close();
+                    this.salida.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
             }
         }
     }
     
+    }
 }
