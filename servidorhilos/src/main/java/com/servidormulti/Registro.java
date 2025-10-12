@@ -26,12 +26,15 @@ public class Registro {
      */
     public static boolean usuarioExiste(String username) throws IOException {
         Path path = Paths.get(CSV_FILE_PATH);
+        // Si el archivo no existe o está vacío (solo encabezado), el usuario no puede existir.
         if (!Files.exists(path) || Files.size(path) == 0) {
             return false;
         }
 
         try (Reader in = new FileReader(CSV_FILE_PATH);
-             CSVParser parser = new CSVParser(in, CSVFormat.DEFAULT.withHeader(HEADERS).withSkipHeaderRecord(true))) {
+             // Usamos withHeader(HEADERS) para asegurar que el parser conoce los nombres de las columnas
+             // y setSkipHeaderRecord(true) para ignorar la primera línea (encabezado) al leer los registros.
+             CSVParser parser = new CSVParser(in, CSVFormat.DEFAULT.builder().setHeader(HEADERS).setSkipHeaderRecord(true).build())) {
             for (CSVRecord record : parser) {
                 if (record.get("usuario").equalsIgnoreCase(username)) {
                     return true;
@@ -58,10 +61,14 @@ public class Registro {
         boolean fileExists = Files.exists(path) && Files.size(path) > 0;
 
         try (FileWriter out = new FileWriter(CSV_FILE_PATH, true); // Abrir en modo de añadir (append)
-             CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT.withHeader(HEADERS).withSkipHeaderRecord(!fileExists))) {
+             // Solo imprimir el encabezado si el archivo no existe o está vacío
+             CSVPrinter printer = new CSVPrinter(out, CSVFormat.DEFAULT.builder().setHeader(HEADERS).setSkipHeaderRecord(!fileExists).build())) {
             
+            // Si el archivo es nuevo o estaba vacío, Commons CSV se encargará de imprimir el encabezado
+            // gracias a withHeader y setSkipHeaderRecord(!fileExists) en el constructor del printer.
+            // Si el archivo ya tiene contenido, simplemente añadirá el nuevo registro.
             printer.printRecord(clienteId, username, password);
-            printer.flush();
+            printer.flush(); // Asegurarse de que los datos se escriban en el disco
         }
         return true;
     }
@@ -103,7 +110,7 @@ public class Registro {
         }
 
         try (Reader in = new FileReader(CSV_FILE_PATH);
-             CSVParser parser = new CSVParser(in, CSVFormat.DEFAULT.withHeader(HEADERS).withSkipHeaderRecord(true))) {
+             CSVParser parser = new CSVParser(in, CSVFormat.DEFAULT.builder().setHeader(HEADERS).setSkipHeaderRecord(true).build())) {
             for (CSVRecord record : parser) {
                 if (record.get("usuario").equalsIgnoreCase(username) && record.get("password").equals(password)) {
                     return true;
