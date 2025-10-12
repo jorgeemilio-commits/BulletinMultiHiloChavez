@@ -15,6 +15,7 @@ public class Registrar {
         Path tempPath = null;
         try {
             tempPath = Paths.get(Registrar.class.getResource("/usuario.txt").toURI());
+            System.out.println("Ruta del archivo de usuarios (Registrar): " + tempPath.toAbsolutePath());
         } catch (Exception e) {
             System.err.println("Error al cargar el archivo de usuarios: " + e.getMessage());
         }

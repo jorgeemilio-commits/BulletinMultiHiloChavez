@@ -13,6 +13,7 @@ public class Login {
         Path tempPath = null;
         try {
             tempPath = Paths.get(Login.class.getResource("/usuario.txt").toURI());
+            System.out.println("Ruta del archivo de usuarios (Login): " + tempPath.toAbsolutePath());
         } catch (Exception e) {
             System.err.println("Error al cargar el archivo de usuarios: " + e.getMessage());
         }
