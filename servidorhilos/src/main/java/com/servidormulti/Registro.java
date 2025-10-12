@@ -92,9 +92,9 @@ public class Registro {
                 return "Error de registro: Las contraseñas no coinciden. Inténtalo de nuevo.";
             } else {
                 if (registrarUsuario(clientId, username, password)) {
-                    return "Registro exitoso, " + username + ". Ahora puedes enviar mensajes ilimitados.";
+                    return "Registro exitoso. Bienvenido, " + username + "!";
                 } else {
-                    return "Error de registro: El usuario '" + username + "' ya existe. Por favor, elige otro.";
+                    return "Error de registro: El nombre de usuario ya está en uso.";
                 }
             }
         } else {
