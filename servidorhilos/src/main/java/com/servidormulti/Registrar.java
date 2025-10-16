@@ -1,63 +1,51 @@
 package com.servidormulti;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class Registrar {
-    private static final Path USUARIOS_FILE;
 
-    static {
-        Path tempPath = null;
-        try {
-            tempPath = Paths.get(Registrar.class.getResource("/usuario.txt").toURI());
-            System.out.println("Ruta del archivo de usuarios (Registrar): " + tempPath.toAbsolutePath());
-        } catch (Exception e) {
-            System.err.println("Error al cargar el archivo de usuarios: " + e.getMessage());
-        }
-        USUARIOS_FILE = tempPath;
-    }
-
-    /**
-     * Registra un nuevo usuario si el nombre no está en uso.
-     *
-     * @param nombre El nombre del usuario.
-     * @param password La contraseña del usuario.
-     * @return Mensaje indicando el resultado del registro.
-     */
     public String registrarUsuario(String nombre, String password) {
-        try {
+        String sqlInsert = "INSERT INTO usuarios (nombre, password) VALUES (?, ?)";
+        String sqlCheck = "SELECT count(*) FROM usuarios WHERE nombre = ?";
+        Connection conn = ConexionDB.conectar(); 
 
-            if (!Files.exists(USUARIOS_FILE)) {
-                Files.createFile(USUARIOS_FILE);
+        if (conn == null) {
+            return "Error de conexión a la base de datos.";
+        }
+
+        try (PreparedStatement checkStmt = conn.prepareStatement(sqlCheck)) {
+            // 1. Verificar si el nombre de usuario ya existe
+            checkStmt.setString(1, nombre);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                return "El nombre de usuario ya está en uso.";
             }
 
-            // Leer todos los usuarios existentes
-            List<String> usuarios = Files.readAllLines(USUARIOS_FILE);
+            // 2. Insertar el nuevo usuario
+            try (PreparedStatement insertStmt = conn.prepareStatement(sqlInsert)) {
+                insertStmt.setString(1, nombre);
+                insertStmt.setString(2, password);
+                int filasAfectadas = insertStmt.executeUpdate();
 
-            // Verificar si el nombre ya existe
-            for (String usuario : usuarios) {
-                String[] partes = usuario.split(",");
-                if (partes.length > 0 && partes[0].equals(nombre)) {
-                    return "El nombre de usuario ya está en uso."; // El nombre ya está en uso
+                if (filasAfectadas > 0) {
+                    return "Registro exitoso.";
+                } else {
+                    return "Error al registrar el usuario.";
                 }
             }
 
-            // Agregar el nuevo usuario al archivo
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(USUARIOS_FILE.toString(), true))) {
-                writer.write(nombre + "," + password);
-                writer.newLine();
+        } catch (SQLException e) {
+            // si el usuario ya existe, se captura la excepción y se informa al cliente
+            if (e.getMessage().contains("UNIQUE constraint failed")) {
+                return "El nombre de usuario ya está en uso.";
             }
-
-            return "Registro exitoso."; 
-        } catch (IOException e) {
-            System.err.println("Error al registrar usuario en el archivo: " + USUARIOS_FILE);
-            e.printStackTrace();
-            return "Error al registrar usuario. Verifica los permisos o la ruta del archivo.";
+            System.err.println("Error al registrar usuario: " + e.getMessage());
+            return "Error interno al registrar usuario.";
+        } finally {
+            ConexionDB.cerrarConexion(conn);
         }
     }
 }

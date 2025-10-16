@@ -16,13 +16,13 @@ public class ConexionDB {
     public static Connection conectar() {
         Connection conn = null;
         try {
-            // Cargar el driver JDBC de SQLite
+            // carga el driver JDBC
             Class.forName("org.sqlite.JDBC"); 
             
-            // Establecer la conexión (crea el archivo 'usuarios.db' si no existe)
+            // se conecta con la base de datos (crea el archivo 'usuarios.db' si no existe)
             conn = DriverManager.getConnection(URL);
             
-            // Crear la tabla de usuarios si no existe
+            // crear la tabla de usuarios si no existe
             crearTabla(conn); 
 
         } catch (ClassNotFoundException e) {
