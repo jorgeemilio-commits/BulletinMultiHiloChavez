@@ -8,6 +8,7 @@ import java.util.List;
 
 public class Login {
     private static final Path USUARIOS_FILE;
+    private static final Object LOCK = new Object();
 
     static {
         Path tempPath = null;
@@ -29,20 +30,22 @@ public class Login {
      */
     
     public boolean iniciarSesion(String nombre, String password) {
-        try {
-            // Leer todos los usuarios 
-            List<String> usuarios = Files.readAllLines(USUARIOS_FILE);
+        synchronized (LOCK) {
+            try {
+                // Leer todos los usuarios 
+                List<String> usuarios = Files.readAllLines(USUARIOS_FILE);
 
-            // Verificar si los datos coinciden
-            for (String usuario : usuarios) {
-                String[] partes = usuario.split(",");
-                if (partes.length == 2 && partes[0].equals(nombre) && partes[1].equals(password)) {
-                    return true; 
+                // Verificar si los datos coinciden
+                for (String usuario : usuarios) {
+                    String[] partes = usuario.split(",");
+                    if (partes.length == 2 && partes[0].equals(nombre) && partes[1].equals(password)) {
+                        return true; 
+                    }
                 }
+            } catch (IOException e) {
+                System.err.println("Error al verificar credenciales: " + e.getMessage());
             }
-        } catch (IOException e) {
-            System.err.println("Error al verificar credenciales: " + e.getMessage());
+            return false; 
         }
-        return false; 
     }
 }
