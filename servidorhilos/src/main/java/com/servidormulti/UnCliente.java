@@ -3,42 +3,76 @@ package com.servidormulti;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.IOException; // Importar IOException
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
 public class UnCliente implements Runnable {
     
     final DataOutputStream salida;
-
     final BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in));
-
     final DataInputStream entrada;
-
-    final String clienteID;
-
-    int mensajesEnviados = 0; // Contador de mensajes enviados
+    final String clienteID; 
+    
+    private final ManejadorMensajes manejadorMensajes; 
+    
+    // ESTADO DEL CLIENTE
+    private String nombreUsuario; 
+    private int mensajesEnviados = 0;
+    private boolean logueado = false;
 
     UnCliente(Socket s, String id) throws java.io.IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
         this.entrada = new DataInputStream(s.getInputStream());
         this.clienteID = id;
+        this.nombreUsuario = "Invitado-" + id;
+
+        // Inicializa el manejador de mensajes
+        this.manejadorMensajes = new ManejadorMensajes(ServidorMulti.clientes); 
+    }
+
+    // getters y setters para mensajesEnviados
+
+    public String getNombreUsuario() {
+        return nombreUsuario;
+    }
+
+    public int getMensajesEnviados() {
+        return mensajesEnviados;
+    }
+
+    public void incrementarMensajesEnviados() {
+        this.mensajesEnviados++;
     }
     
+    // logica de login y registro
 
+    /**
+     * Intenta iniciar sesión y actualiza el estado del cliente.
+     */
+    private boolean manejarLogin(String nombre, String password) throws IOException {
+        Login login = new Login();
+        if (login.iniciarSesion(nombre, password)) {
+
+            // Se actualiza el estado
+            this.nombreUsuario = nombre; 
+            this.logueado = true;
+            return true;
+        }
+        return false;
+    }
 
     @Override
     public void run() {
         String mensaje;
-        boolean logueado = false; // Estado de inicio de sesión
+        
         System.out.println("Hilo " + Thread.currentThread().getName() + " iniciado.");
         
-        // Mensaje de bienvenida
         try {
-            this.salida.writeUTF("Bienvenido al servidor. Puedes hacer lo siguiente:\n" +
-                                 "1. Enviar mensajes a otros usuarios usando @id o @id-id-id.\n" +
-                                 "2. Usar /registrar para registrarte con un usuario y contraseña.\n" +
-                                 "3. Usar /login para iniciar sesión con tu usuario y contraseña.");
+            this.salida.writeUTF("Bienvenido al servidor. Tu nombre actual es: " + this.nombreUsuario + "\n" +
+                                 "1. Enviar mensajes usando @ID o @NombreUsuario o @ID-Nombre-ID.\n" +
+                                 "2. Usar /registrar para crear una cuenta (inicia sesión automáticamente).\n" +
+                                 "3. Usar /login para iniciar sesión.");
         } catch (IOException e) {
             System.err.println("Error al enviar mensaje de bienvenida: " + e.getMessage());
         }
@@ -46,9 +80,10 @@ public class UnCliente implements Runnable {
         while (true) {
             try {
                 mensaje = entrada.readUTF();
-                boolean mensajeEnviado = false;
 
-                // Comando para registrar usuario
+                // comandos
+                
+                // registrar
                 if (mensaje.equalsIgnoreCase("/registrar")) {
                     this.salida.writeUTF("Introduce tu nombre de usuario:");
                     String nombre = entrada.readUTF();
@@ -67,10 +102,18 @@ public class UnCliente implements Runnable {
                     Registrar registrar = new Registrar();
                     String resultado = registrar.registrarUsuario(nombre, password);
                     this.salida.writeUTF(resultado);
+                    
+                    if (resultado.contains("Registro exitoso")) {
+                        if (manejarLogin(nombre, password)) {
+                            this.salida.writeUTF("Registro exitoso e inicio de sesión automático. Tu nuevo nombre es: " + this.nombreUsuario);
+                        } else {
+                            this.salida.writeUTF("Registro exitoso, pero ocurrió un error al iniciar sesión automáticamente.");
+                        }
+                    }
                     continue;
                 }
 
-                // Comando para iniciar sesión
+                // login
                 if (mensaje.equalsIgnoreCase("/login")) {
                     this.salida.writeUTF("Introduce tu nombre de usuario:");
                     String nombre = entrada.readUTF();
@@ -78,55 +121,30 @@ public class UnCliente implements Runnable {
                     this.salida.writeUTF("Introduce tu contraseña:");
                     String password = entrada.readUTF();
 
-                    Login login = new Login();
-                    if (login.iniciarSesion(nombre, password)) {
-                        logueado = true;
-                        this.salida.writeUTF("Inicio de sesión exitoso. Ahora puedes enviar mensajes sin límite.");
+                    if (manejarLogin(nombre, password)) {
+                        this.salida.writeUTF("Inicio de sesión exitoso. Tu nuevo nombre es: " + this.nombreUsuario + ". Ahora puedes enviar mensajes sin límite.");
                     } else {
                         this.salida.writeUTF("Credenciales incorrectas. Intenta de nuevo.");
                     }
                     continue;
                 }
 
-                // Verificar si el usuario está logueado o tiene límite de mensajes
-                if (!logueado && this.mensajesEnviados >= 3) {
+                // logica de envio de mensajes
+
+                // checa limite
+                if (!this.logueado && this.mensajesEnviados >= 3) {
                     this.salida.writeUTF("Has enviado 3 mensajes. Por favor, regístrate o inicia sesión para seguir enviando.");
                     continue;
                 }
+                
+                // logica de tageo
+                manejadorMensajes.enrutarMensaje(this, mensaje, this.logueado);
 
-                if (mensaje.startsWith("@")) {
-                    int divMensaje = mensaje.indexOf(" ");
-                    if (divMensaje == -1) {
-                        continue; // no hay espacio, no es un mensaje válido
-                    }
-                    String destino = mensaje.substring(1, divMensaje);
-                    String contenido = mensaje.substring(divMensaje + 1).trim();
-                    String[] partes = destino.split("-"); // divide por guión para saber los usuarios
-
-                    for (String aQuien : partes) {
-                        UnCliente cliente = ServidorMulti.clientes.get(aQuien);
-                        if (cliente != null) { //si el usuario existe
-                            if (!cliente.clienteID.equals(this.clienteID)) {
-                                cliente.salida.writeUTF(Thread.currentThread().getName() + ": " + contenido + " (" + (this.mensajesEnviados + 1) + ")");
-                                mensajeEnviado = true;
-                            }
-                        }
-                    }
-                } else {
-                    for (UnCliente unCliente : ServidorMulti.clientes.values()) {
-                        if (!unCliente.clienteID.equals(this.clienteID)) {
-                            unCliente.salida.writeUTF(Thread.currentThread().getName() + ": " + mensaje + " (" + (this.mensajesEnviados + 1) + ")");
-                            mensajeEnviado = true;
-                        }
-                    }
-                }
-
-                // Incrementar el contador solo una vez por mensaje enviado por el cliente
-                if (mensajeEnviado && !logueado) {
-                    this.mensajesEnviados++;
-                }
 
             } catch (Exception ex) {
+                // desconexión del cliente
+                System.out.println("Cliente " + this.nombreUsuario + " se ha desconectado.");
+                ServidorMulti.clientes.remove(this.clienteID); 
                 try {
                     this.entrada.close();
                     this.salida.close();
@@ -137,5 +155,4 @@ public class UnCliente implements Runnable {
             }
         }
     }
-    
 }
