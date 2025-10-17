@@ -7,12 +7,8 @@ import java.sql.Statement;
 
 public class ConexionDB {
 
-    private static final String URL = "jdbc:sqlite:usuarios.db"; // El archivo se creará en la raíz del proyecto
+    private static final String URL = "jdbc:sqlite:usuarios.db";
 
-    /**
-     * Establece la conexión con la base de datos SQLite y crea la tabla si no existe.
-     * @return Objeto Connection si la conexión es exitosa, null en caso contrario.
-     */
     public static Connection conectar() {
         Connection conn = null;
         try {
@@ -22,8 +18,8 @@ public class ConexionDB {
             // se conecta con la base de datos (crea el archivo 'usuarios.db' si no existe)
             conn = DriverManager.getConnection(URL);
             
-            // crear la tabla de usuarios si no existe
-            crearTabla(conn); 
+            // crear las tablas de usuarios y bloqueos si no existen
+            crearTablas(conn); 
 
         } catch (ClassNotFoundException e) {
             System.err.println("Error: Driver JDBC de SQLite no encontrado.");
@@ -34,23 +30,29 @@ public class ConexionDB {
         return conn;
     }
 
-    private static void crearTabla(Connection conn) {
-        String sql = "CREATE TABLE IF NOT EXISTS usuarios (" +
+    private static void crearTablas(Connection conn) {
+        String sqlUsuarios = "CREATE TABLE IF NOT EXISTS usuarios (" +
                      "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                      "nombre TEXT NOT NULL UNIQUE," +
                      "password TEXT NOT NULL" +
                      ");";
+                     
+        // NUEVA TABLA para manejar los bloqueos:
+        String sqlBloqueos = "CREATE TABLE IF NOT EXISTS bloqueos (" +
+                     "bloqueador_nombre TEXT NOT NULL," +
+                     "bloqueado_nombre TEXT NOT NULL," +
+                     "PRIMARY KEY (bloqueador_nombre, bloqueado_nombre)" +
+                     ");";
+                     
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
-            System.out.println("Tabla 'usuarios' verificada o creada.");
+            stmt.execute(sqlUsuarios);
+            stmt.execute(sqlBloqueos);
+            System.out.println("Tablas 'usuarios' y 'bloqueos' verificadas o creadas.");
         } catch (SQLException e) {
-            System.err.println("Error al crear la tabla: " + e.getMessage());
+            System.err.println("Error al crear las tablas: " + e.getMessage());
         }
     }
 
-    /**
-     * Cierra la conexión.
-     */
     public static void cerrarConexion(Connection conn) {
         try {
             if (conn != null) {
