@@ -64,7 +64,7 @@ public class ManejadorMensajes {
                 if (cliente != null) { 
                     // no se envia a si mismo
                     if (!cliente.clienteID.equals(remitenteCliente.clienteID)) { 
-                        cliente.salida.writeUTF(remitente + ": " + contenido + " (" + (mensajesEnviados + 1) + ")");
+                        cliente.salida.writeUTF(remitente + ": " + contenido /*+ " (" + (mensajesEnviados + 1) + ")"*/);
                         mensajeEnviado = true;
                     }
                 }
@@ -79,7 +79,7 @@ public class ManejadorMensajes {
             for (UnCliente unCliente : clientes.values()) {
                 // no se envia a si mismo
                 if (!unCliente.clienteID.equals(remitenteCliente.clienteID)) { 
-                    unCliente.salida.writeUTF(remitente + ": " + mensaje + " (" + (mensajesEnviados + 1) + ")");
+                    unCliente.salida.writeUTF(remitente + ": " + mensaje /*+ " (" + (mensajesEnviados + 1) + ")"*/);
                     mensajeEnviado = true;
                 }
             }
