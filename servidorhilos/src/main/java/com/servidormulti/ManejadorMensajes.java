@@ -11,11 +11,6 @@ public class ManejadorMensajes {
         this.clientes = clientes;
     }
 
-    /**
-     * Busca un cliente en el HashMap por ID numérico (clave) o por Nombre de Usuario.
-     * @param identificador ID numérico o nombre de usuario.
-     * @return Cliente UnCliente encontrado, o null.
-     */
     private UnCliente buscarCliente(String identificador) {
         // busca por ID numerico
         UnCliente cliente = clientes.get(identificador);
@@ -32,20 +27,13 @@ public class ManejadorMensajes {
         return null;
     }
 
-    /**
-     * Procesa y enruta el mensaje
-     * @param remitenteCliente El objeto UnCliente que envía el mensaje.
-     * @param mensaje El contenido completo del mensaje.
-     * @param logueado Indica si el remitente está logueado (para el contador).
-     * @return true si el mensaje fue enviado a al menos un destinatario.
-     * @throws IOException
-     */
     public boolean enrutarMensaje(UnCliente remitenteCliente, String mensaje, boolean logueado) throws IOException {
         
         String remitente = remitenteCliente.getNombreUsuario();
         boolean mensajeEnviado = false;
-        int mensajesEnviados = remitenteCliente.getMensajesEnviados(); // Obtener el contador
-
+        
+        // Se elimina la impresión del contador en el mensaje, solo se usa para el límite.
+        
         if (mensaje.startsWith("@")) {
             // @tageo
             int divMensaje = mensaje.indexOf(" ");
@@ -57,14 +45,22 @@ public class ManejadorMensajes {
             String destino = mensaje.substring(1, divMensaje);
             String contenido = mensaje.substring(divMensaje + 1).trim();
             String[] partes = destino.split("-");
+            
+            BloqueoDB bloqueoDB = new BloqueoDB();
 
             for (String aQuien : partes) {
                 UnCliente cliente = buscarCliente(aQuien); 
                 
                 if (cliente != null) { 
-                    // no se envia a si mismo
+                    // 1. checar bloqueo
+                    if (bloqueoDB.estaBloqueado(cliente.getNombreUsuario(), remitente)) {
+                        remitenteCliente.salida.writeUTF("No se pudo entregar el mensaje a '" + cliente.getNombreUsuario() + "' (Bloqueo activo).");
+                        continue; 
+                    }
+                    
+                    // 2. no se envia a si mismo
                     if (!cliente.clienteID.equals(remitenteCliente.clienteID)) { 
-                        cliente.salida.writeUTF(remitente + ": " + contenido /*+ " (" + (mensajesEnviados + 1) + ")"*/);
+                        cliente.salida.writeUTF(remitente + ": " + contenido);
                         mensajeEnviado = true;
                     }
                 }
@@ -76,10 +72,19 @@ public class ManejadorMensajes {
 
         } else {
             // mensaje general
+            BloqueoDB bloqueoDB = new BloqueoDB();
+
             for (UnCliente unCliente : clientes.values()) {
                 // no se envia a si mismo
                 if (!unCliente.clienteID.equals(remitenteCliente.clienteID)) { 
-                    unCliente.salida.writeUTF(remitente + ": " + mensaje /*+ " (" + (mensajesEnviados + 1) + ")"*/);
+                    
+                    // checar bloqueo
+                    if (bloqueoDB.estaBloqueado(unCliente.getNombreUsuario(), remitente)) {
+                        // si esta bloqueado, no enviar
+                        continue;
+                    }
+
+                    unCliente.salida.writeUTF(remitente + ": " + mensaje);
                     mensajeEnviado = true;
                 }
             }

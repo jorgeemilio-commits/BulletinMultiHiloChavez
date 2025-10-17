@@ -3,17 +3,33 @@ package com.servidormulti;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class ManejadorComandos {
+    
 
-    /**
-     * Procesa el comando /registrar.
-     * @param entrada Stream de entrada del cliente.
-     * @param salida Stream de salida para el cliente.
-     * @param cliente El objeto UnCliente que se está registrando.
-     * @return true si el registro fue exitoso (y el cliente hizo login).
-     * @throws IOException
-     */
+    private boolean existeUsuarioDB(String nombre) {
+        String sql = "SELECT COUNT(*) FROM usuarios WHERE nombre = ?";
+        Connection conn = ConexionDB.conectar();
+        if (conn == null) return false;
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nombre);
+            ResultSet rs = pstmt.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
+        } catch (SQLException e) {
+            System.err.println("Error al verificar existencia de usuario: " + e.getMessage());
+            return false;
+        } finally {
+            ConexionDB.cerrarConexion(conn);
+        }
+    }
+
+    // --- Lógica de Comandos ---
+
     public boolean manejarRegistro(DataInputStream entrada, DataOutputStream salida, UnCliente cliente) throws IOException {
         salida.writeUTF("Introduce tu nombre de usuario:");
         String nombre = entrada.readUTF();
@@ -44,14 +60,6 @@ public class ManejadorComandos {
         return false;
     }
     
-    /**
-     * Procesa el comando /login.
-     * @param entrada Stream de entrada del cliente.
-     * @param salida Stream de salida para el cliente.
-     * @param cliente El objeto UnCliente que intenta iniciar sesión.
-     * @return true si el login fue exitoso.
-     * @throws IOException
-     */
     public boolean manejarLogin(DataInputStream entrada, DataOutputStream salida, UnCliente cliente) throws IOException {
         salida.writeUTF("Introduce tu nombre de usuario:");
         String nombre = entrada.readUTF();
@@ -66,5 +74,75 @@ public class ManejadorComandos {
             salida.writeUTF("Credenciales incorrectas. Intenta de nuevo.");
             return false;
         }
+    }
+    
+    //  LOGOUT
+    public void manejarLogout(DataOutputStream salida, UnCliente cliente) throws IOException {
+        if (!cliente.estaLogueado()) {
+            salida.writeUTF("Ya estás desconectado. Tu nombre es: " + cliente.getNombreUsuario());
+            return;
+        }
+        cliente.manejarLogoutInterno();
+        salida.writeUTF("Has cerrado sesión. Tu nombre es ahora '" + cliente.getNombreUsuario() + "'.");
+    }
+
+    // BLOCK
+    public void manejarBloqueo(String comando, DataOutputStream salida, UnCliente cliente) throws IOException {
+        if (!cliente.estaLogueado()) {
+            salida.writeUTF("Debes iniciar sesión para bloquear usuarios.");
+            return;
+        }
+        
+        String[] partes = comando.trim().split(" ");
+        if (partes.length != 2) {
+            salida.writeUTF("Uso: /block nombre_usuario");
+            return;
+        }
+
+        String aBloquear = partes[1];
+        String miNombre = cliente.getNombreUsuario();
+        
+        if (aBloquear.equalsIgnoreCase(miNombre)) {
+            salida.writeUTF("No puedes bloquearte a ti mismo.");
+            return;
+        }
+
+        // 1. Verificar si el usuario a bloquear existe en la DB
+        if (!existeUsuarioDB(aBloquear)) {
+            salida.writeUTF("Error: El usuario '" + aBloquear + "' no existe en el sistema.");
+            return;
+        }
+
+        // 2. Ejecutar bloqueo
+        BloqueoDB bloqueoDB = new BloqueoDB();
+        String resultado = bloqueoDB.bloquearUsuario(miNombre, aBloquear);
+        salida.writeUTF(resultado);
+    }
+
+    // UNBLOCK
+    public void manejarDesbloqueo(String comando, DataOutputStream salida, UnCliente cliente) throws IOException {
+        if (!cliente.estaLogueado()) {
+            salida.writeUTF("Debes iniciar sesión para desbloquear usuarios.");
+            return;
+        }
+
+        String[] partes = comando.trim().split(" ");
+        if (partes.length != 2) {
+            salida.writeUTF("Uso: /unblock nombre_usuario");
+            return;
+        }
+
+        String aDesbloquear = partes[1];
+        String miNombre = cliente.getNombreUsuario();
+
+        if (aDesbloquear.equalsIgnoreCase(miNombre)) {
+            salida.writeUTF("No puedes desbloquearte a ti mismo.");
+            return;
+        }
+        
+        // 1. Ejecutar desbloqueo
+        BloqueoDB bloqueoDB = new BloqueoDB();
+        String resultado = bloqueoDB.desbloquearUsuario(miNombre, aDesbloquear);
+        salida.writeUTF(resultado);
     }
 }
