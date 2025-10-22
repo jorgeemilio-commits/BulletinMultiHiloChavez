@@ -11,19 +11,22 @@ public class UnCliente implements Runnable {
     final DataInputStream entrada;
     final String clienteID; 
     
+    // --- MANEJADORES SEPARADOS ---
     private final ManejadorMensajes manejadorMensajes; 
     private final ManejadorComandos manejadorComandos; 
     private final ManejadorJuegos manejadorJuegos;
+    private final ManejadorAutenticacion manejadorAutenticacion; 
+    // --- FIN MANEJADORES ---
     
     // estado del cliente
     private String nombreUsuario; 
     private int mensajesEnviados = 0;
     private boolean logueado = false;
 
-    // --- CAMPOS DE JUEGO ---
+    // Campos de Juego
     private volatile String oponentePendiente = null;
     private volatile JuegoGato juegoActual = null;
-    // --- FIN CAMPOS DE JUEGO ---
+
 
     UnCliente(Socket s, String id) throws java.io.IOException {
         this.salida = new DataOutputStream(s.getOutputStream());
@@ -33,26 +36,23 @@ public class UnCliente implements Runnable {
         
         this.manejadorMensajes = new ManejadorMensajes(ServidorMulti.clientes); 
         this.manejadorComandos = new ManejadorComandos();
-        this.manejadorJuegos = new ManejadorJuegos(ServidorMulti.clientes); 
+        this.manejadorJuegos = new ManejadorJuegos(ServidorMulti.clientes);
+        this.manejadorAutenticacion = new ManejadorAutenticacion(); // --- AÑADIDO ---
 
     }
 
-    // --- GETTERS & SETTERS ---
+    // --- GETTERS & SETTERS ) ---
     public String getNombreUsuario() { return nombreUsuario; }
     public int getMensajesEnviados() { return mensajesEnviados; }
     public void incrementarMensajesEnviados() { this.mensajesEnviados++; }
     public boolean estaLogueado() { return logueado; }
-    
-    // --- NUEVOS GETTERS & SETTERS (JUEGO) ---
     public synchronized String getOponentePendiente() { return oponentePendiente; }
     public synchronized void setOponentePendiente(String nombre) { this.oponentePendiente = nombre; }
-    
     public synchronized JuegoGato getJuegoActual() { return juegoActual; }
     public synchronized void setJuegoActual(JuegoGato juego) { this.juegoActual = juego; }
-    
     public synchronized boolean estaEnJuego() { return this.juegoActual != null; }
     
-    // login
+    // --- MÉTODOS INTERNOS  ---
     public boolean manejarLoginInterno(String nombre, String password) throws IOException {
         Login login = new Login();
         if (login.iniciarSesion(nombre, password)) {
@@ -63,7 +63,6 @@ public class UnCliente implements Runnable {
         return false;
     }
     
-    // logout
     public void manejarLogoutInterno() {
         if (this.logueado) {
             this.logueado = false;
@@ -85,7 +84,7 @@ public class UnCliente implements Runnable {
             try {
                 String mensaje = entrada.readUTF();
 
-                // --- MANEJO DE JUEGO ---
+                // --- MANEJO DE JUEGO  ---
                 if (this.estaEnJuego()) {
                     if (mensaje.equalsIgnoreCase("/salirjuego")) {
                         this.juegoActual.terminarJuego(this, "El oponente '" + this.getNombreUsuario() + "' ha abandonado la partida.");
@@ -94,18 +93,20 @@ public class UnCliente implements Runnable {
                     }
                     continue; 
                 }
-                // --- FIN MANEJO DE JUEGO ---
-
-
-                // 1. Manejar Comandos
+                
+                // --- 1. MANEJO DE COMANDOS  ---
+                
+                // Comandos de Autenticación
                 if (mensaje.equalsIgnoreCase("/registrar")) {
-                    manejadorComandos.manejarRegistro(entrada, salida, this);
+                    manejadorAutenticacion.manejarRegistro(entrada, salida, this); // ACTUALIZADO
                     continue;
                 }
                 if (mensaje.equalsIgnoreCase("/login")) {
-                    manejadorComandos.manejarLogin(entrada, salida, this);
+                    manejadorAutenticacion.manejarLogin(entrada, salida, this); // ACTUALIZADO
                     continue;
                 }
+                
+                // Comandos de Usuario
                 if (mensaje.equalsIgnoreCase("/logout")) {
                     manejadorComandos.manejarLogout(salida, this);
                     continue;
@@ -119,18 +120,17 @@ public class UnCliente implements Runnable {
                     continue;
                 }
 
-                // --- COMANDOS DE JUEGO (AHORA USAN 'manejadorJuegos') ---
+                // Comandos de Juego
                 if (mensaje.startsWith("/jugar ")) { 
-                    manejadorJuegos.manejarJugar(mensaje, salida, this); // ACTUALIZADO
+                    manejadorJuegos.manejarJugar(mensaje, salida, this);
                     continue;
                 }
                 if (mensaje.equalsIgnoreCase("/aceptar")) {
-                    manejadorJuegos.manejarAceptar(salida, this); // ACTUALIZADO
+                    manejadorJuegos.manejarAceptar(salida, this);
                     continue;
                 }
-                // --- FIN COMANDOS DE JUEGO ---
 
-                // 2. Verificar Límite y Enviar Mensajes
+                // --- 2. MANEJO DE MENSAJES  ---
                 if (!this.logueado && this.mensajesEnviados >= 3) {
                     this.salida.writeUTF("Límite de 3 mensajes alcanzado. Por favor, inicia sesión.");
                     continue;
@@ -139,6 +139,7 @@ public class UnCliente implements Runnable {
                 manejadorMensajes.enrutarMensaje(this, mensaje, this.logueado);
 
             } catch (Exception ex) {
+                // --- MANEJO DE DESCONEXIÓN  ---
                 System.out.println("Cliente " + this.nombreUsuario + " se ha desconectado.");
                 
                 if (this.estaEnJuego()) {
