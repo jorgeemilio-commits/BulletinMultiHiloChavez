@@ -1,18 +1,14 @@
 package com.servidormulti;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-// Ya no necesita importar Map
 
 public class ManejadorComandos {
     
-    // --- MÉTODO AUXILIAR 'buscarCliente' ELIMINADO ---
-
     private boolean existeUsuarioDB(String nombre) {
         String sql = "SELECT COUNT(*) FROM usuarios WHERE nombre = ?";
         Connection conn = ConexionDB.conectar();
@@ -30,54 +26,6 @@ public class ManejadorComandos {
         }
     }
 
-    // --- Lógica de Comandos ---
-
-    public boolean manejarRegistro(DataInputStream entrada, DataOutputStream salida, UnCliente cliente) throws IOException {
-        salida.writeUTF("Introduce tu nombre de usuario:");
-        String nombre = entrada.readUTF();
-
-        salida.writeUTF("Introduce tu contraseña:");
-        String password = entrada.readUTF();
-
-        salida.writeUTF("Confirma tu contraseña:");
-        String confirmPassword = entrada.readUTF();
-
-        if (!password.equals(confirmPassword)) {
-            salida.writeUTF("Las contraseñas no coinciden. Intenta de nuevo.");
-            return false;
-        }
-
-        Registrar registrar = new Registrar();
-        String resultado = registrar.registrarUsuario(nombre, password);
-        salida.writeUTF(resultado);
-        
-        if (resultado.contains("Registro exitoso")) {
-            if (cliente.manejarLoginInterno(nombre, password)) {
-                salida.writeUTF("Registro exitoso e inicio de sesión automático. Tu nuevo nombre es: " + cliente.getNombreUsuario());
-                return true;
-            } else {
-                salida.writeUTF("Registro exitoso, pero ocurrió un error al iniciar sesión automáticamente.");
-            }
-        }
-        return false;
-    }
-    
-    public boolean manejarLogin(DataInputStream entrada, DataOutputStream salida, UnCliente cliente) throws IOException {
-        salida.writeUTF("Introduce tu nombre de usuario:");
-        String nombre = entrada.readUTF();
-
-        salida.writeUTF("Introduce tu contraseña:");
-        String password = entrada.readUTF();
-
-        if (cliente.manejarLoginInterno(nombre, password)) {
-            salida.writeUTF("Inicio de sesión exitoso. Tu nuevo nombre es: " + cliente.getNombreUsuario() + ". Ahora puedes enviar mensajes sin límite.");
-            return true;
-        } else {
-            salida.writeUTF("Credenciales incorrectas. Intenta de nuevo.");
-            return false;
-        }
-    }
-    
     public void manejarLogout(DataOutputStream salida, UnCliente cliente) throws IOException {
         if (!cliente.estaLogueado()) {
             salida.writeUTF("Ya estás desconectado. Tu nombre es: " + cliente.getNombreUsuario());
