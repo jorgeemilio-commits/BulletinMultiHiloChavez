@@ -7,9 +7,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+// Ya no necesita importar Map
 
 public class ManejadorComandos {
     
+    // --- MÉTODO AUXILIAR 'buscarCliente' ELIMINADO ---
 
     private boolean existeUsuarioDB(String nombre) {
         String sql = "SELECT COUNT(*) FROM usuarios WHERE nombre = ?";
@@ -76,7 +78,6 @@ public class ManejadorComandos {
         }
     }
     
-    //  LOGOUT
     public void manejarLogout(DataOutputStream salida, UnCliente cliente) throws IOException {
         if (!cliente.estaLogueado()) {
             salida.writeUTF("Ya estás desconectado. Tu nombre es: " + cliente.getNombreUsuario());
@@ -86,7 +87,6 @@ public class ManejadorComandos {
         salida.writeUTF("Has cerrado sesión. Tu nombre es ahora '" + cliente.getNombreUsuario() + "'.");
     }
 
-    // BLOCK
     public void manejarBloqueo(String comando, DataOutputStream salida, UnCliente cliente) throws IOException {
         if (!cliente.estaLogueado()) {
             salida.writeUTF("Debes iniciar sesión para bloquear usuarios.");
@@ -107,19 +107,16 @@ public class ManejadorComandos {
             return;
         }
 
-        // 1. Verificar si el usuario a bloquear existe en la DB
         if (!existeUsuarioDB(aBloquear)) {
             salida.writeUTF("Error: El usuario '" + aBloquear + "' no existe en el sistema.");
             return;
         }
 
-        // 2. Ejecutar bloqueo
         BloqueoDB bloqueoDB = new BloqueoDB();
         String resultado = bloqueoDB.bloquearUsuario(miNombre, aBloquear);
         salida.writeUTF(resultado);
     }
 
-    // UNBLOCK
     public void manejarDesbloqueo(String comando, DataOutputStream salida, UnCliente cliente) throws IOException {
         if (!cliente.estaLogueado()) {
             salida.writeUTF("Debes iniciar sesión para desbloquear usuarios.");
@@ -140,7 +137,6 @@ public class ManejadorComandos {
             return;
         }
         
-        // 1. Ejecutar desbloqueo
         BloqueoDB bloqueoDB = new BloqueoDB();
         String resultado = bloqueoDB.desbloquearUsuario(miNombre, aDesbloquear);
         salida.writeUTF(resultado);
