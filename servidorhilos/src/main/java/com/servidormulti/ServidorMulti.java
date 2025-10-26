@@ -4,10 +4,11 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ServidorMulti {
 
-    static HashMap<String, UnCliente> clientes = new HashMap<String,UnCliente>();
+    static ConcurrentHashMap<String, UnCliente> clientes = new ConcurrentHashMap<String,UnCliente>();
 
 
     public static void main(String[] args) throws IOException {
