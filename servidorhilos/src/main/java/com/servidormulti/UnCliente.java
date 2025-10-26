@@ -98,7 +98,7 @@ public class UnCliente implements Runnable {
             this.salida.writeUTF("Bienvenido. Tu nombre actual es: " + this.nombreUsuario + "\n" +
                                  "1. Enviar mensajes usando @ID o @NombreUsuario.\n" +
                                  "2. Usar /registrar, /login, /logout, /block, /unblock.\n" +
-                                 "3. Para juegos: /jugar NombreOponente, /aceptar NombreRetador, /jugada ID Fila,Columna, /salirjuego ID.");
+                                 "3. Para juegos: /jugar NombreOponente, /aceptar NombreRetador.");
         } catch (IOException e) { System.err.println("Error de bienvenida: " + e.getMessage()); }
 
         while (true) {

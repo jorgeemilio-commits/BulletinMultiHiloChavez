@@ -41,14 +41,14 @@ public class JuegoGato {
             String fila = (i + 1) + " | " + tablero[i][0] + " | " + tablero[i][1] + " | " + tablero[i][2];
             enviarMensajeAmbos(fila);
             if (i < 2) {
-                enviarMensajeAmbos("  -----------");
+                enviarMensajeAmbos("  --------------");
             }
         }
         
         // Pie de página (Instrucciones)
         enviarMensajeAmbos("\nTurno de: " + jugadorActual.getNombreUsuario() + " (" + simboloActual + ")");
         
-        jugadorActual.salida.writeUTF("Usa: /jugada " + juegoID + " Fila,Columna (ej: /jugada " + juegoID + " 1,1).");
+        jugadorActual.salida.writeUTF("Usa: /jugada " + juegoID + " Fila,Columna (ej: /jugada " + juegoID + "(ID)" + " 1,1).");
         jugadorActual.salida.writeUTF("Para abandonar: /salirjuego " + juegoID);
         
         UnCliente esperando = (jugadorActual == playerX) ? playerO : playerX;
