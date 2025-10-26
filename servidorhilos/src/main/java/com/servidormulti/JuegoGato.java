@@ -35,15 +35,19 @@ public class JuegoGato {
     // Envía el tablero a ambos jugadores
     private void dibujarTablero() throws IOException {
         enviarMensajeAmbos("\nTablero de Gato:");
+        // Añadir coordenadas de columnas (arriba)
+        enviarMensajeAmbos("    1   2   3");
         for (int i = 0; i < 3; i++) {
-            String fila = " " + tablero[i][0] + " | " + tablero[i][1] + " | " + tablero[i][2];
+            // Añadir coordenada de fila (izquierda) + contenido
+            String fila = " " + (i + 1) + " | " + tablero[i][0] + " | " + tablero[i][1] + " | " + tablero[i][2];
             enviarMensajeAmbos(fila);
             if (i < 2) {
-                enviarMensajeAmbos("---|---|---");
+                enviarMensajeAmbos("   ---|---|---");
             }
         }
         enviarMensajeAmbos("\nTurno de: " + jugadorActual.getNombreUsuario() + " (" + (jugadorActual == playerX ? 'X' : 'O') + ")");
-        enviarMensajeAmbos("Usa Fila,Columna (ej: 0,0 o 1,2). Escribe /salirjuego para abandonar.");
+        // Mensaje de ayuda actualizado a 1-based
+        enviarMensajeAmbos("Usa Fila,Columna (ej: 1,1 o 2,3). Escribe /salirjuego para abandonar.");
     }
 
     public void iniciarJuego() throws IOException {
@@ -72,6 +76,7 @@ public class JuegoGato {
     }
 
     // Verifica si el movimiento es válido
+    // (Esta función no cambia, ya que recibe la fila/col en 0-based)
     private boolean esMovimientoValido(int fila, int col) {
         return fila >= 0 && fila < 3 && col >= 0 && col < 3 && tablero[fila][col] == ' ';
     }
@@ -110,13 +115,15 @@ public class JuegoGato {
 
         String[] coords = input.trim().split(",");
         if (coords.length != 2) {
+            // Mensaje de error actualizado
             jugador.salida.writeUTF("Formato incorrecto. Usa Fila,Columna (ej: 1,2)");
             return;
         }
 
         try {
-            int fila = Integer.parseInt(coords[0]);
-            int col = Integer.parseInt(coords[1]);
+            // Convertir de 1-based (input usuario) a 0-based (índice array)
+            int fila = Integer.parseInt(coords[0]) - 1;
+            int col = Integer.parseInt(coords[1]) - 1;
 
             if (esMovimientoValido(fila, col)) {
                 char simbolo = (jugadorActual == playerX) ? 'X' : 'O';
@@ -138,10 +145,12 @@ public class JuegoGato {
                 }
                 
             } else {
-                jugador.salida.writeUTF("Movimiento inválido. Esa casilla ya está ocupada o fuera del tablero.");
+                // Mensaje de error actualizado
+                jugador.salida.writeUTF("Movimiento inválido. Esa casilla ya está ocupada o fuera del tablero (Usa 1, 2 o 3).");
             }
         } catch (NumberFormatException e) {
-            jugador.salida.writeUTF("Input inválido. Debes enviar números (ej: 0,1).");
+            // Mensaje de error actualizado
+            jugador.salida.writeUTF("Input inválido. Debes enviar números (ej: 1,2).");
         }
     }
 }
