@@ -3,18 +3,17 @@ package com.servidormulti;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ManejadorJuegos {
 
     private final Map<String, UnCliente> clientes;
+    private static final AtomicLong gameIdCounter = new AtomicLong(0); // Contador atómico para IDs únicos
 
     public ManejadorJuegos(Map<String, UnCliente> clientes) {
         this.clientes = clientes;
     }
 
-    /**
-     * Busca un cliente conectado por ID o por Nombre de Usuario.
-     */
     private UnCliente buscarCliente(String identificador) {
         // busca por ID numerico
         UnCliente cliente = clientes.get(identificador);
@@ -42,7 +41,7 @@ public class ManejadorJuegos {
         
         String[] partes = comando.trim().split(" ");
         if (partes.length != 2) {
-            salida.writeUTF("Uso: /jugar nombre_usuario");
+            salida.writeUTF("Uso: /jugar NombreOponente");
             return;
         }
         
@@ -53,7 +52,6 @@ public class ManejadorJuegos {
             return;
         }
 
-        // Buscar al oponente en la lista de clientes CONECTADOS
         UnCliente oponente = buscarCliente(nombreOponente);
         
         if (oponente == null) {
@@ -61,37 +59,37 @@ public class ManejadorJuegos {
             return;
         }
         
-        if (oponente.estaEnJuego()) {
-            salida.writeUTF("El usuario '" + nombreOponente + "' ya está en un juego.");
-            return;
-        }
-
         // Enviar la invitación
         oponente.setOponentePendiente(retador.getNombreUsuario());
         oponente.salida.writeUTF("¡RETO DE GATO! '" + retador.getNombreUsuario() + "' te ha retado a una partida.");
-        oponente.salida.writeUTF("Escribe /aceptar para comenzar.");
+        oponente.salida.writeUTF("Escribe /aceptar " + retador.getNombreUsuario() + " para comenzar.");
         
         salida.writeUTF("Invitación enviada a '" + nombreOponente + "'. Esperando respuesta...");
     }
 
     /**
-     * Maneja el comando /aceptar
+     * Maneja el comando /aceptar [nombre_retador]
      */
-    public void manejarAceptar(DataOutputStream salida, UnCliente aceptador) throws IOException {
+    public void manejarAceptar(String comando, DataOutputStream salida, UnCliente aceptador) throws IOException {
         if (!aceptador.estaLogueado()) {
             salida.writeUTF("Debes iniciar sesión para aceptar un juego.");
             return;
         }
         
-        String nombreRetador = aceptador.getOponentePendiente();
-
-        // Verificar si hay una invitación
-        if (nombreRetador == null) {
-            salida.writeUTF("No tienes ninguna invitación pendiente.");
+        String[] partes = comando.trim().split(" ");
+        if (partes.length != 2) {
+            salida.writeUTF("Uso: /aceptar NombreRetador");
             return;
         }
         
-        // Buscar al retador original por si no se desconectó
+        String nombreRetador = partes[1];
+        
+        // 1. Verificar invitación
+        if (!nombreRetador.equalsIgnoreCase(aceptador.getOponentePendiente())) {
+            salida.writeUTF("No tienes una invitación pendiente de '" + nombreRetador + "'.");
+            return;
+        }
+        
         UnCliente retador = buscarCliente(nombreRetador);
         
         if (retador == null) {
@@ -99,18 +97,21 @@ public class ManejadorJuegos {
             aceptador.setOponentePendiente(null); // Limpiar la invitación
             return;
         }
-
-        // 1. Limpiar invitaciónes
+        
+        // 2. Limpiar invitación
         aceptador.setOponentePendiente(null); 
         
-        // 2. Crear la instancia del juego
-        JuegoGato nuevoJuego = new JuegoGato(retador, aceptador);
+        // 3. Crear el ID del juego
+        String nuevoJuegoID = String.valueOf(gameIdCounter.incrementAndGet());
         
-        // 3. Poner a ambos jugadores en estado "en juego"
-        retador.setJuegoActual(nuevoJuego);
-        aceptador.setJuegoActual(nuevoJuego);
+        // 4. Crear la instancia del juego (Pasando el nuevo ID)
+        JuegoGato nuevoJuego = new JuegoGato(retador, aceptador, nuevoJuegoID);
         
-        // 4. Iniciar el juego
+        // 5. Agregar el juego al mapa de cada jugador usando el ID
+        retador.agregarJuego(nuevoJuegoID, nuevoJuego);
+        aceptador.agregarJuego(nuevoJuegoID, nuevoJuego);
+        
+        // 6. Iniciar el juego
         nuevoJuego.iniciarJuego();
     }
 }
