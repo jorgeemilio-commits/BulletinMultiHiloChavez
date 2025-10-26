@@ -7,24 +7,16 @@ public class JuegoGato {
     private final UnCliente playerX;
     private final UnCliente playerO;
     private UnCliente jugadorActual;
-    private final char[][] tablero;
-    private final String juegoID; // Nuevo campo
+    private final TableroGato tableroJuego; // Uso de la nueva clase TableroGato
+    private final String juegoID; 
+    private final EstadisticasDB statsDB = new EstadisticasDB(); // Reutiliza una instancia
 
-    public JuegoGato(UnCliente retador, UnCliente aceptador, String id) { // ID añadido al constructor
+    public JuegoGato(UnCliente retador, UnCliente aceptador, String id) {
         this.playerX = retador; // el retador es X
         this.playerO = aceptador; // el que acepta es O
         this.jugadorActual = playerX; // empieza el X
-        this.tablero = new char[3][3];
-        this.juegoID = id; // Asignación del ID
-        inicializarTablero();
-    }
-
-    private void inicializarTablero() {
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                tablero[i][j] = ' ';
-            }
-        }
+        this.tableroJuego = new TableroGato(); // Inicializa el tablero
+        this.juegoID = id; 
     }
 
     private void enviarMensajeAmbos(String mensaje) throws IOException {
@@ -32,23 +24,30 @@ public class JuegoGato {
         playerO.salida.writeUTF(mensaje);
     }
 
+    /**
+     * Responsabilidad: Dibuja el estado actual del Tablero de Juego a ambos clientes.
+     */
     private void dibujarTablero() throws IOException {
-        // Muestra el ID del juego
+        char simboloActual = tableroJuego.getSimboloActual();
+        
+        // Encabezado (ID y Oponente)
         playerX.salida.writeUTF("\n--- PARTIDA DE GATO [ID: " + juegoID + "] contra " + playerO.getNombreUsuario() + " (Tú eres X) ---");
         playerO.salida.writeUTF("\n--- PARTIDA DE GATO [ID: " + juegoID + "] contra " + playerX.getNombreUsuario() + " (Tú eres O) ---");
         
+        // Cuerpo del Tablero
         enviarMensajeAmbos("    1   2   3");
+        char[][] tablero = tableroJuego.getTablero();
         for (int i = 0; i < 3; i++) {
             String fila = (i + 1) + " | " + tablero[i][0] + " | " + tablero[i][1] + " | " + tablero[i][2];
             enviarMensajeAmbos(fila);
             if (i < 2) {
-                enviarMensajeAmbos("  ---|---|---");
+                enviarMensajeAmbos("  -----------");
             }
         }
         
-        enviarMensajeAmbos("\nTurno de: " + jugadorActual.getNombreUsuario() + " (" + (jugadorActual == playerX ? 'X' : 'O') + ")");
+        // Pie de página (Instrucciones)
+        enviarMensajeAmbos("\nTurno de: " + jugadorActual.getNombreUsuario() + " (" + simboloActual + ")");
         
-        // Instrucciones modificadas para usar el ID del juego
         jugadorActual.salida.writeUTF("Usa: /jugada " + juegoID + " Fila,Columna (ej: /jugada " + juegoID + " 1,1).");
         jugadorActual.salida.writeUTF("Para abandonar: /salirjuego " + juegoID);
         
@@ -63,8 +62,12 @@ public class JuegoGato {
 
     private void cambiarTurno() {
         jugadorActual = (jugadorActual == playerX) ? playerO : playerX;
+        tableroJuego.setSiguienteSimbolo(); // Mueve el símbolo de juego en el Tablero
     }
 
+    /**
+     * Responsabilidad: Terminar el juego, notificar a los clientes y registrar resultados.
+     */
     public void terminarJuego(UnCliente jugadorAbandona, String razon) {
         try {
             enviarMensajeAmbos("--- Juego Terminado ---");
@@ -77,48 +80,25 @@ public class JuegoGato {
         } catch (IOException e) {
             System.err.println("Error al notificar fin de juego: " + e.getMessage());
         } finally {
-            // Elimina el juego del mapa de juegos activos en ambos clientes (lógica para múltiples juegos)
+            // Elimina el juego del mapa de juegos activos en ambos clientes
             playerX.removerJuego(this.juegoID); 
             playerO.removerJuego(this.juegoID);
         }
     }
     
-    // NUEVO MÉTODO PARA REGISTRAR VICTORIAS/DERROTAS
     private void registrarResultado(UnCliente ganador, UnCliente perdedor, String tipoResultado) {
         // Solo registra si están logueados
         if (ganador.estaLogueado()) {
-            new EstadisticasDB().registrarVictoria(ganador.getNombreUsuario());
+            statsDB.registrarVictoria(ganador.getNombreUsuario());
         }
         if (perdedor.estaLogueado()) {
-            new EstadisticasDB().registrarDerrota(perdedor.getNombreUsuario());
+            statsDB.registrarDerrota(perdedor.getNombreUsuario());
         }
-        // No se registran empates por simplicidad, solo victorias/derrotas.
     }
 
-    private boolean esMovimientoValido(int fila, int col) {
-        return fila >= 1 && fila <= 3 && col >= 1 && col <= 3 && tablero[fila - 1][col - 1] == ' ';
-    }
-
-    private String verificarEstadoJuego() {
-        char simbolo = (jugadorActual == playerX) ? 'X' : 'O';
-
-        for (int i = 0; i < 3; i++) {
-            if (tablero[i][0] == simbolo && tablero[i][1] == simbolo && tablero[i][2] == simbolo) return "GANADOR";
-            if (tablero[0][i] == simbolo && tablero[1][i] == simbolo && tablero[2][i] == simbolo) return "GANADOR";
-        }
-        if (tablero[0][0] == simbolo && tablero[1][1] == simbolo && tablero[2][2] == simbolo) return "GANADOR";
-        if (tablero[0][2] == simbolo && tablero[1][1] == simbolo && tablero[2][0] == simbolo) return "GANADOR";
-
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                if (tablero[i][j] == ' ') {
-                    return "CONTINUA";
-                }
-            }
-        }
-        return "EMPATE";
-    }
-
+    /**
+     * Responsabilidad: Recibir y procesar la entrada de un cliente.
+     */
     public void manejarJugada(UnCliente jugador, String input) throws IOException {
         if (jugador != jugadorActual) {
             jugador.salida.writeUTF("¡Espera! No es tu turno.");
@@ -135,20 +115,19 @@ public class JuegoGato {
             int fila = Integer.parseInt(coords[0]);
             int col = Integer.parseInt(coords[1]);
 
-            if (esMovimientoValido(fila, col)) {
-                char simbolo = (jugadorActual == playerX) ? 'X' : 'O';
-                tablero[fila - 1][col - 1] = simbolo;
-
-                String estado = verificarEstadoJuego();
+            // Delegar el movimiento y la lógica de validación a TableroGato
+            if (tableroJuego.hacerMovimiento(fila, col)) {
+                
+                String estado = tableroJuego.verificarEstadoJuego();
 
                 if (estado.equals("GANADOR")) {
-                    dibujarTablero();
+                    dibujarTablero(); // Dibuja el tablero final
 
                     UnCliente perdedor = (jugadorActual == playerX) ? playerO : playerX;
                     jugadorActual.salida.writeUTF("🎉 ¡Felicidades " + jugadorActual.getNombreUsuario() + "! Has ganado contra " + perdedor.getNombreUsuario() + ". 🎉");
                     perdedor.salida.writeUTF("😞 Has perdido contra " + jugadorActual.getNombreUsuario() + ".");
 
-                    registrarResultado(jugadorActual, perdedor, "GANADOR");
+                    registrarResultado(jugadorActual, perdedor, "VICTORIA");
                     terminarJuego(null, "Ganador: " + jugadorActual.getNombreUsuario());
 
                 } else if (estado.equals("EMPATE")) {
