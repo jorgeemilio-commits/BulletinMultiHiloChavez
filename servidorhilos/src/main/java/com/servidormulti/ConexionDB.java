@@ -31,10 +31,13 @@ public class ConexionDB {
     }
 
     private static void crearTablas(Connection conn) {
+        // SQL MODIFICADO: Agrega campos de victorias y derrotas a la tabla usuarios
         String sqlUsuarios = "CREATE TABLE IF NOT EXISTS usuarios (" +
                      "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                      "nombre TEXT NOT NULL UNIQUE," +
-                     "password TEXT NOT NULL" +
+                     "password TEXT NOT NULL," +
+                     "victorias INTEGER DEFAULT 0," + 
+                     "derrotas INTEGER DEFAULT 0" +  
                      ");";
                      
         // NUEVA TABLA para manejar los bloqueos:
@@ -46,6 +49,15 @@ public class ConexionDB {
                      
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(sqlUsuarios);
+            
+            // Permite añadir columnas si la tabla ya existía
+            try {
+                stmt.execute("ALTER TABLE usuarios ADD COLUMN victorias INTEGER DEFAULT 0");
+            } catch (SQLException ignore) { /* Columna ya existe */ }
+            try {
+                stmt.execute("ALTER TABLE usuarios ADD COLUMN derrotas INTEGER DEFAULT 0");
+            } catch (SQLException ignore) { /* Columna ya existe */ }
+            
             stmt.execute(sqlBloqueos);
             System.out.println("Tablas 'usuarios' y 'bloqueos' verificadas o creadas.");
         } catch (SQLException e) {
