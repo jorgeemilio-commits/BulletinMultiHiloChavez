@@ -124,15 +124,15 @@ public class JuegoGato {
                     dibujarTablero(); // Dibuja el tablero final
 
                     UnCliente perdedor = (jugadorActual == playerX) ? playerO : playerX;
-                    jugadorActual.salida.writeUTF("🎉 ¡Felicidades " + jugadorActual.getNombreUsuario() + "! Has ganado contra " + perdedor.getNombreUsuario() + ". 🎉");
-                    perdedor.salida.writeUTF("😞 Has perdido contra " + jugadorActual.getNombreUsuario() + ".");
+                    jugadorActual.salida.writeUTF("¡Felicidades " + jugadorActual.getNombreUsuario() + "! Has ganado contra " + perdedor.getNombreUsuario() + ". 🎉");
+                    perdedor.salida.writeUTF(" Has perdido contra " + jugadorActual.getNombreUsuario() + ".");
 
                     registrarResultado(jugadorActual, perdedor, "VICTORIA");
                     terminarJuego(null, "Ganador: " + jugadorActual.getNombreUsuario());
 
                 } else if (estado.equals("EMPATE")) {
                     dibujarTablero();
-                    enviarMensajeAmbos("🤝 ¡Empate! Buen juego entre " + playerX.getNombreUsuario() + " y " + playerO.getNombreUsuario() + ".");
+                    enviarMensajeAmbos("¡Empate! Buen juego entre " + playerX.getNombreUsuario() + " y " + playerO.getNombreUsuario() + ".");
                     
                     terminarJuego(null, "Resultado: Empate");
 
