@@ -9,6 +9,14 @@ import java.sql.SQLException;
 
 public class ManejadorComandos {
     
+    private final ManejadorRangos manejadorRangos;
+    private final ManejadorWinrate manejadorWinrate;
+
+    public ManejadorComandos() {
+        this.manejadorRangos = new ManejadorRangos();
+        this.manejadorWinrate = new ManejadorWinrate();
+    }
+    
     private boolean existeUsuarioDB(String nombre) {
         String sql = "SELECT COUNT(*) FROM usuarios WHERE nombre = ?";
         Connection conn = ConexionDB.conectar();
@@ -88,5 +96,19 @@ public class ManejadorComandos {
         BloqueoDB bloqueoDB = new BloqueoDB();
         String resultado = bloqueoDB.desbloquearUsuario(miNombre, aDesbloquear);
         salida.writeUTF(resultado);
+    }
+
+    /**
+     * Delega la lógica a ManejadorRangos.
+     */
+    public void manejarRangos(DataOutputStream salida) throws IOException {
+        manejadorRangos.ejecutar(salida);
+    }
+
+    /**
+     * Delega la lógica a ManejadorWinrate.
+     */
+    public void manejarWinrate(String comando, DataOutputStream salida, UnCliente cliente) throws IOException {
+        manejadorWinrate.ejecutar(comando, salida, cliente);
     }
 }
