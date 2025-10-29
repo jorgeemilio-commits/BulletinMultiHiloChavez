@@ -11,6 +11,12 @@ public class JuegoGato {
     private final String juegoID; 
     private final EstadisticasDB statsDB = new EstadisticasDB(); // Reutiliza una instancia
 
+    // --- CONSTANTES DE PUNTUACIÓN ---
+    private static final int PUNTOS_VICTORIA = 2;
+    private static final int PUNTOS_EMPATE = 1;
+    private static final int PUNTOS_DERROTA = 0;
+
+
     public JuegoGato(UnCliente retador, UnCliente aceptador, String id) {
         this.playerX = retador; // el retador es X
         this.playerO = aceptador; // el que acepta es O
@@ -75,6 +81,8 @@ public class JuegoGato {
                 enviarMensajeAmbos(razon);
                 // Si alguien abandona, el otro gana
                 UnCliente ganador = (jugadorAbandona == playerX) ? playerO : playerX;
+                
+                // MODIFICADO: Registrar resultado de abandono
                 registrarResultado(ganador, jugadorAbandona, "ABANDONO");
             }
         } catch (IOException e) {
@@ -86,13 +94,50 @@ public class JuegoGato {
         }
     }
     
+    /**
+     * MODIFICADO: Registra el resultado (puntos y partida) en la base de datos.
+     * @param ganador El cliente ganador (null si es empate).
+     * @param perdedor El cliente perdedor (null si es empate).
+     * @param tipoResultado "VICTORIA", "EMPATE", o "ABANDONO".
+     */
     private void registrarResultado(UnCliente ganador, UnCliente perdedor, String tipoResultado) {
-        // Solo registra si están logueados
-        if (ganador.estaLogueado()) {
-            statsDB.registrarVictoria(ganador.getNombreUsuario());
+        
+        String nombreGanador = (ganador != null) ? ganador.getNombreUsuario() : null;
+        String nombrePerdedor = (perdedor != null) ? perdedor.getNombreUsuario() : null;
+
+        // 1. Registrar Puntos y Estadísticas (Victorias/Derrotas)
+        if (tipoResultado.equals("VICTORIA") || tipoResultado.equals("ABANDONO")) {
+            
+            if (ganador != null && ganador.estaLogueado()) {
+                statsDB.registrarVictoria(nombreGanador);
+                statsDB.registrarPuntos(nombreGanador, PUNTOS_VICTORIA);
+            }
+            if (perdedor != null && perdedor.estaLogueado()) {
+                statsDB.registrarDerrota(nombrePerdedor);
+                statsDB.registrarPuntos(nombrePerdedor, PUNTOS_DERROTA);
+            }
+
+        } else if (tipoResultado.equals("EMPATE")) {
+            
+            // Ambos jugadores (X y O) reciben puntos por empate
+            if (playerX.estaLogueado()) {
+                statsDB.registrarPuntos(playerX.getNombreUsuario(), PUNTOS_EMPATE);
+            }
+            if (playerO.estaLogueado()) {
+                statsDB.registrarPuntos(playerO.getNombreUsuario(), PUNTOS_EMPATE);
+            }
         }
-        if (perdedor.estaLogueado()) {
-            statsDB.registrarDerrota(perdedor.getNombreUsuario());
+        
+        // 2. Registrar la Partida en la tabla 'partidas'
+        // Solo registrar si ambos están logueados (para estadísticas H2H)
+        if (playerX.estaLogueado() && playerO.estaLogueado()) {
+            statsDB.registrarPartida(
+                playerX.getNombreUsuario(),
+                playerO.getNombreUsuario(),
+                nombreGanador,
+                nombrePerdedor,
+                tipoResultado
+            );
         }
     }
 
@@ -127,6 +172,7 @@ public class JuegoGato {
                     jugadorActual.salida.writeUTF("¡Felicidades " + jugadorActual.getNombreUsuario() + "! Has ganado contra " + perdedor.getNombreUsuario() + ". 🎉");
                     perdedor.salida.writeUTF(" Has perdido contra " + jugadorActual.getNombreUsuario() + ".");
 
+                    // MODIFICADO: Registrar resultado de victoria
                     registrarResultado(jugadorActual, perdedor, "VICTORIA");
                     terminarJuego(null, "Ganador: " + jugadorActual.getNombreUsuario());
 
@@ -134,6 +180,8 @@ public class JuegoGato {
                     dibujarTablero();
                     enviarMensajeAmbos("¡Empate! Buen juego entre " + playerX.getNombreUsuario() + " y " + playerO.getNombreUsuario() + ".");
                     
+                    // MODIFICADO: Registrar resultado de empate
+                    registrarResultado(null, null, "EMPATE");
                     terminarJuego(null, "Resultado: Empate");
 
                 } else {
