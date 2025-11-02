@@ -9,29 +9,32 @@ import java.sql.SQLException;
 
 public class ManejadorComandos {
     
+    // --- MANEJADORES DELEGADOS ---
     private final ManejadorRangos manejadorRangos;
     private final ManejadorWinrate manejadorWinrate;
+    private final ManejadorAccionesGrupo manejadorAccionesGrupo; // NUEVO
+
+    // --- OBJETOS DB  ---
+    private final BloqueoDB bloqueoDB;
+    private final MensajeDB mensajeDB; // Para 'existeUsuarioDB'
 
     public ManejadorComandos() {
         this.manejadorRangos = new ManejadorRangos();
         this.manejadorWinrate = new ManejadorWinrate();
+        
+        // Instanciar los objetos DB necesarios
+        GrupoDB grupoDB = new GrupoDB();
+        this.mensajeDB = new MensajeDB();
+        this.bloqueoDB = new BloqueoDB();
+        this.manejadorAccionesGrupo = new ManejadorAccionesGrupo(grupoDB, mensajeDB);
     }
     
+    /**
+     *  Usa la instancia de MensajeDB
+     */
     private boolean existeUsuarioDB(String nombre) {
-        String sql = "SELECT COUNT(*) FROM usuarios WHERE nombre = ?";
-        Connection conn = ConexionDB.conectar();
-        if (conn == null) return false;
-
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, nombre);
-            ResultSet rs = pstmt.executeQuery();
-            return rs.next() && rs.getInt(1) > 0;
-        } catch (SQLException e) {
-            System.err.println("Error al verificar existencia de usuario: " + e.getMessage());
-            return false;
-        } finally {
-            ConexionDB.cerrarConexion(conn);
-        }
+        // Llama a MensajeDB
+        return this.mensajeDB.existeUsuario(nombre);
     }
 
     public void manejarLogout(DataOutputStream salida, UnCliente cliente) throws IOException {
@@ -68,7 +71,6 @@ public class ManejadorComandos {
             return;
         }
 
-        BloqueoDB bloqueoDB = new BloqueoDB();
         String resultado = bloqueoDB.bloquearUsuario(miNombre, aBloquear);
         salida.writeUTF(resultado);
     }
@@ -93,22 +95,36 @@ public class ManejadorComandos {
             return;
         }
         
-        BloqueoDB bloqueoDB = new BloqueoDB();
         String resultado = bloqueoDB.desbloquearUsuario(miNombre, aDesbloquear);
         salida.writeUTF(resultado);
     }
+    
+    
+    // --- (Rangos/Winrate) ---
 
-    /**
-     * Delega la lógica a ManejadorRangos.
-     */
     public void manejarRangos(DataOutputStream salida) throws IOException {
         manejadorRangos.ejecutar(salida);
     }
 
-    /**
-     * Delega la lógica a ManejadorWinrate.
-     */
     public void manejarWinrate(String comando, DataOutputStream salida, UnCliente cliente) throws IOException {
         manejadorWinrate.ejecutar(comando, salida, cliente);
+    }
+
+    // ---  (Grupos) ---
+    
+    public void manejarCrearGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
+        manejadorAccionesGrupo.crearGrupo(partes, salida, cliente);
+    }
+    
+    public void manejarBorrarGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
+        manejadorAccionesGrupo.borrarGrupo(partes, salida, cliente);
+    }
+    
+    public void manejarUnirseGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
+        manejadorAccionesGrupo.unirseGrupo(partes, salida, cliente);
+    }
+
+    public void manejarSalirGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
+        manejadorAccionesGrupo.salirGrupo(partes, salida, cliente);
     }
 }

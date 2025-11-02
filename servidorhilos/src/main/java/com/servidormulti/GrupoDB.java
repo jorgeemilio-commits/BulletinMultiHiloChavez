@@ -131,6 +131,55 @@ public class GrupoDB {
         }
     }
 
+
+    /**
+     * También elimina su registro de "mensajes vistos" para ese grupo.
+     */
+
+    public String salirGrupo(String nombreGrupo, String nombreUsuario) {
+        if (nombreGrupo.equalsIgnoreCase("Todos")) {
+            return "Error: No puedes salir del grupo 'Todos'.";
+        }
+
+        Integer grupoId = getGrupoId(nombreGrupo);
+        if (grupoId == null) {
+            return "Error: El grupo '" + nombreGrupo + "' no existe.";
+        }
+
+        String sqlDeleteMiembro = "DELETE FROM grupos_miembros WHERE grupo_id = ? AND usuario_nombre = ?";
+        String sqlDeleteEstado = "DELETE FROM grupos_estado_usuario WHERE grupo_id = ? AND usuario_nombre = ?";
+        Connection conn = ConexionDB.conectar();
+        if (conn == null) return "Error de conexión.";
+
+        try (PreparedStatement pstmtMiembro = conn.prepareStatement(sqlDeleteMiembro);
+             PreparedStatement pstmtEstado = conn.prepareStatement(sqlDeleteEstado)) {
+            
+            // 1. Eliminar membresía
+            pstmtMiembro.setInt(1, grupoId);
+            pstmtMiembro.setString(2, nombreUsuario);
+            int filasAfectadas = pstmtMiembro.executeUpdate();
+
+            // 2. Eliminar registro de estado (mensajes vistos)
+            pstmtEstado.setInt(1, grupoId);
+            pstmtEstado.setString(2, nombreUsuario);
+            pstmtEstado.executeUpdate();
+
+            if (filasAfectadas > 0) {
+                return "Has salido del grupo '" + nombreGrupo + "'.";
+            } else {
+                return "No eras miembro del grupo '" + nombreGrupo + "'.";
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al salir de grupo: " + e.getMessage());
+            return "Error interno al salir de grupo.";
+        } finally {
+            ConexionDB.cerrarConexion(conn);
+        }
+    }
+
+
+
+
     /**
      * Obtiene una lista de todos los miembros de un grupo.
      */
