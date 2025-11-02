@@ -9,8 +9,8 @@ import java.util.regex.Pattern;
 
 public class ManejadorMensajes {
 
-    // Regex para capturar: @g "Nombre de Grupo" mensaje
-    private static final Pattern PATRON_GRUPO = Pattern.compile("^@g\\s+\"([^\"]+)\"\\s+(.+)");
+    // Regex para capturar: @g "Nombre de Grupo" mensaje (Ahora usando #grupo para evadir conflictos)
+    private static final Pattern PATRON_GRUPO = Pattern.compile("^#([\\w\\-]+)\\s+(.+)");
 
     private final Map<String, UnCliente> clientesConectados;
     private final GrupoDB grupoDB;
@@ -48,15 +48,15 @@ public class ManejadorMensajes {
     public void enrutarMensaje(UnCliente remitente, String mensaje) throws IOException {
         String nombreRemitente = remitente.getNombreUsuario();
         
-        // --- 1. MENSAJE DE GRUPO (@g "grupo" ...) ---
+        // --- 1. MENSAJE DE GRUPO (#g "grupo" ...) ---
         Matcher matcherGrupo = PATRON_GRUPO.matcher(mensaje);
         if (matcherGrupo.find()) {
             if (!remitente.estaLogueado()) {
                 remitente.salida.writeUTF("Error: Debes iniciar sesión para enviar mensajes a grupos.");
                 return;
             }
-            String nombreGrupo = matcherGrupo.group(1);
-            String contenido = matcherGrupo.group(2);
+            String nombreGrupo = matcherGrupo.group(1); // Grupo 1 es el nombre
+            String contenido = matcherGrupo.group(2); // Grupo 2 es el mensaje
             manejarMensajeGrupo(remitente, nombreGrupo, contenido);
             return;
         }

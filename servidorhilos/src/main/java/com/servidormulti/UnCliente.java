@@ -96,7 +96,7 @@ public class UnCliente implements Runnable {
             this.salida.writeUTF("Bienvenido. Tu nombre actual es: " + this.nombreUsuario + "\n" +
                                  "--- Comandos de Mensajes ---\n" +
                                  "  Mensaje a 'Todos': Hola a todos\n" +
-                                 "  Mensaje a Grupo:   @g \"NombreGrupo\" Hola grupo\n" +
+                                 "  Mensaje a Grupo:   #g \"NombreGrupo\" Hola grupo\n" +
                                  "  Mensaje Privado:   @Usuario Hola\n" +
                                  "--- Comandos de Grupos ---\n" +
                                  "  /creargrupo, /borrargrupo, /unirsegrupo, /saligrupo\n" +
