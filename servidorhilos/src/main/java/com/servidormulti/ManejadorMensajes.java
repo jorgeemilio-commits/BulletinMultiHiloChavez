@@ -1,25 +1,40 @@
 package com.servidormulti;
 
-import java.util.Map;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ManejadorMensajes {
 
-    private final Map<String, UnCliente> clientes;
+    // Regex para capturar: @g "Nombre de Grupo" mensaje
+    private static final Pattern PATRON_GRUPO = Pattern.compile("^@g\\s+\"([^\"]+)\"\\s+(.+)");
 
-    public ManejadorMensajes(Map<String, UnCliente> clientes) {
-        this.clientes = clientes;
+    private final Map<String, UnCliente> clientesConectados;
+    private final GrupoDB grupoDB;
+    private final MensajeDB mensajeDB;
+    private final BloqueoDB bloqueoDB;
+
+    public ManejadorMensajes(Map<String, UnCliente> clientes, GrupoDB gdb, MensajeDB mdb, BloqueoDB bdb) {
+        this.clientesConectados = clientes;
+        this.grupoDB = gdb;
+        this.mensajeDB = mdb;
+        this.bloqueoDB = bdb;
     }
 
-    private UnCliente buscarCliente(String identificador) {
+    /**
+     * Busca un cliente CONECTADO por ID o Nombre.
+     */
+    private UnCliente buscarClienteConectado(String identificador) {
         // busca por ID numerico
-        UnCliente cliente = clientes.get(identificador);
+        UnCliente cliente = clientesConectados.get(identificador);
         if (cliente != null) {
             return cliente;
         }
-
         // si no lo encuentra por ID, lo busca por nombre de usuario
-        for (UnCliente c : clientes.values()) {
+        for (UnCliente c : clientesConectados.values()) {
             if (c.getNombreUsuario().equalsIgnoreCase(identificador)) {
                 return c;
             }
@@ -27,74 +42,149 @@ public class ManejadorMensajes {
         return null;
     }
 
-    public boolean enrutarMensaje(UnCliente remitenteCliente, String mensaje, boolean logueado) throws IOException {
+    /**
+     * Enruta el mensaje: lo guarda en la BD y lo distribuye a los usuarios conectados.
+     */
+    public void enrutarMensaje(UnCliente remitente, String mensaje) throws IOException {
+        String nombreRemitente = remitente.getNombreUsuario();
         
-        String remitente = remitenteCliente.getNombreUsuario();
-        boolean mensajeEnviado = false;
-        
-        // Se elimina la impresión del contador en el mensaje, solo se usa para el límite.
-        
+        // --- 1. MENSAJE DE GRUPO (@g "grupo" ...) ---
+        Matcher matcherGrupo = PATRON_GRUPO.matcher(mensaje);
+        if (matcherGrupo.find()) {
+            if (!remitente.estaLogueado()) {
+                remitente.salida.writeUTF("Error: Debes iniciar sesión para enviar mensajes a grupos.");
+                return;
+            }
+            String nombreGrupo = matcherGrupo.group(1);
+            String contenido = matcherGrupo.group(2);
+            manejarMensajeGrupo(remitente, nombreGrupo, contenido);
+            return;
+        }
+
+        // --- 2. MENSAJE PRIVADO (@usuario ...) ---
         if (mensaje.startsWith("@")) {
-            // @tageo
-            int divMensaje = mensaje.indexOf(" ");
-            if (divMensaje == -1) {
-                remitenteCliente.salida.writeUTF("Formato de mensaje incorrecto. Usa @ID_o_Nombre_destino contenido.");
-                return false;
+            if (!remitente.estaLogueado()) {
+                remitente.salida.writeUTF("Error: Debes iniciar sesión para enviar mensajes privados.");
+                return;
             }
+            manejarMensajePrivado(remitente, mensaje);
+            return;
+        }
+        
+        // --- 3. MENSAJE A "Todos" (Default) ---
+        // Incrementar contador si no está logueado
+        if (!remitente.estaLogueado()) {
+            remitente.incrementarMensajesEnviados();
+        }
+        manejarMensajeGrupo(remitente, "Todos", mensaje);
+    }
 
-            String destino = mensaje.substring(1, divMensaje);
-            String contenido = mensaje.substring(divMensaje + 1).trim();
-            String[] partes = destino.split("-");
+    /**
+     * Guarda y distribuye un mensaje de GRUPO.
+     */
+    private void manejarMensajeGrupo(UnCliente remitente, String nombreGrupo, String contenido) throws IOException {
+        String nombreRemitente = remitente.getNombreUsuario();
+
+        Integer grupoId = grupoDB.getGrupoId(nombreGrupo);
+        if (grupoId == null) {
+            remitente.salida.writeUTF("Error: El grupo '" + nombreGrupo + "' no existe.");
+            return;
+        }
+
+        // 1. Guardar mensaje en la BD
+        long nuevoMensajeId = mensajeDB.guardarMensajeGrupo(grupoId, nombreRemitente, contenido);
+        if (nuevoMensajeId == -1) {
+            remitente.salida.writeUTF("Error: No se pudo guardar el mensaje en el grupo.");
+            return;
+        }
+
+        // 2. Obtener lista de miembros (o todos si es "Todos")
+        List<String> miembros;
+        if (nombreGrupo.equalsIgnoreCase("Todos")) {
+            // "Todos" incluye invitados (clientes conectados) y usuarios logueados
+            miembros = new ArrayList<>(clientesConectados.keySet()); // IDs de conectados
+        } else {
+            miembros = grupoDB.getMiembrosGrupo(grupoId); // Nombres de usuarios
+        }
+
+        // 3. Distribuir a miembros conectados
+        String msgFormateado = String.format("<%s> %s: %s", nombreGrupo, nombreRemitente, contenido);
+        
+        for (String identificadorMiembro : miembros) {
+            UnCliente clienteDestino = buscarClienteConectado(identificadorMiembro);
             
-            BloqueoDB bloqueoDB = new BloqueoDB();
-
-            for (String aQuien : partes) {
-                UnCliente cliente = buscarCliente(aQuien); 
+            if (clienteDestino != null && !clienteDestino.clienteID.equals(remitente.clienteID)) {
                 
-                if (cliente != null) { 
-                    // 1. checar bloqueo
-                    if (bloqueoDB.estaBloqueado(cliente.getNombreUsuario(), remitente)) {
-                        remitenteCliente.salida.writeUTF("No se pudo entregar el mensaje a '" + cliente.getNombreUsuario() + "' (Bloqueo activo).");
-                        continue; 
-                    }
-                    
-                    // 2. no se envia a si mismo
-                    if (!cliente.clienteID.equals(remitenteCliente.clienteID)) { 
-                        cliente.salida.writeUTF(remitente + ": " + contenido);
-                        mensajeEnviado = true;
+                // Checar bloqueo
+                if (clienteDestino.estaLogueado()) {
+                    if (bloqueoDB.estaBloqueado(clienteDestino.getNombreUsuario(), nombreRemitente)) {
+                        continue; // No enviar si el destinatario bloqueó al remitente
                     }
                 }
-            }
-            
-            if (!mensajeEnviado) {
-                remitenteCliente.salida.writeUTF("Ningún destinatario fue encontrado con ese(esos) identificador(es).");
-            }
-
-        } else {
-            // mensaje general
-            BloqueoDB bloqueoDB = new BloqueoDB();
-
-            for (UnCliente unCliente : clientes.values()) {
-                // no se envia a si mismo
-                if (!unCliente.clienteID.equals(remitenteCliente.clienteID)) { 
-                    
-                    // checar bloqueo
-                    if (bloqueoDB.estaBloqueado(unCliente.getNombreUsuario(), remitente)) {
-                        // si esta bloqueado, no enviar
-                        continue;
-                    }
-
-                    unCliente.salida.writeUTF(remitente + ": " + mensaje);
-                    mensajeEnviado = true;
+                
+                clienteDestino.salida.writeUTF(msgFormateado);
+                
+                // Actualizar estado de "visto" solo para usuarios logueados
+                if (clienteDestino.estaLogueado()) {
+                    mensajeDB.actualizarEstadoGrupo(clienteDestino.getNombreUsuario(), grupoId, nuevoMensajeId);
                 }
             }
         }
         
-        // si se envio y no esta logueado, incrementa el contador
-        if (mensajeEnviado && !logueado) {
-            remitenteCliente.incrementarMensajesEnviados();
+        // 4. Actualizar el estado del propio remitente
+        mensajeDB.actualizarEstadoGrupo(nombreRemitente, grupoId, nuevoMensajeId);
+    }
+
+    /**
+     * Guarda y distribuye un mensaje privado.
+     */
+    private void manejarMensajePrivado(UnCliente remitente, String mensaje) throws IOException {
+        int divMensaje = mensaje.indexOf(" ");
+        if (divMensaje == -1) {
+            remitente.salida.writeUTF("Formato incorrecto. Usa @Nombre_destino contenido.");
+            return;
         }
 
-        return mensajeEnviado;
+        String nombreDestino = mensaje.substring(1, divMensaje);
+        String contenido = mensaje.substring(divMensaje + 1).trim();
+        String nombreRemitente = remitente.getNombreUsuario();
+        
+        if (nombreDestino.equalsIgnoreCase(nombreRemitente)) {
+             remitente.salida.writeUTF("No puedes enviarte mensajes privados a ti mismo.");
+             return;
+        }
+
+        // 1. Verificar si el usuario destino essta en la BD
+        if (!mensajeDB.existeUsuario(nombreDestino)) {
+            remitente.salida.writeUTF("Error: El usuario '" + nombreDestino + "' no existe.");
+            return;
+        }
+        
+        // 2. Checar bloqueo
+        if (bloqueoDB.estaBloqueado(nombreDestino, nombreRemitente)) {
+            remitente.salida.writeUTF("No se pudo entregar el mensaje a '" + nombreDestino + "' (Bloqueo activo).");
+            return;
+        }
+        
+        // 3. Guardar el mensaje privado en la BD
+        long nuevoMensajeId = mensajeDB.guardarMensajePrivado(nombreRemitente, nombreDestino, contenido);
+        if (nuevoMensajeId == -1) {
+            remitente.salida.writeUTF("Error al guardar el mensaje privado.");
+            return;
+        }
+        
+        // 4. Intentar entrega si el destino está conectado
+        UnCliente clienteDestino = buscarClienteConectado(nombreDestino);
+        
+        if (clienteDestino != null) {
+            String msgFormateado = String.format("[Privado de %s]: %s", nombreRemitente, contenido);
+            clienteDestino.salida.writeUTF(msgFormateado);
+            
+            // 5. Marcar como "visto"
+            mensajeDB.marcarPrivadoVisto(nuevoMensajeId);
+        } else {
+            // No está conectado, lo verá al iniciar sesión.
+            remitente.salida.writeUTF("Mensaje enviado (offline) a '" + nombreDestino + "'.");
+        }
     }
 }
