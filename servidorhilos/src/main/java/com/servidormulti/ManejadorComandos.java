@@ -2,38 +2,31 @@ package com.servidormulti;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+
 
 public class ManejadorComandos {
     
     // --- MANEJADORES DELEGADOS ---
     private final ManejadorRangos manejadorRangos;
     private final ManejadorWinrate manejadorWinrate;
-    private final ManejadorAccionesGrupo manejadorAccionesGrupo; // NUEVO
+    private final ManejadorAccionesGrupo manejadorAccionesGrupo;
 
-    // --- OBJETOS DB  ---
+    // --- OBJETOS DB ---
     private final BloqueoDB bloqueoDB;
-    private final MensajeDB mensajeDB; // Para 'existeUsuarioDB'
+    private final MensajeDB mensajeDB;
 
-    public ManejadorComandos() {
-        this.manejadorRangos = new ManejadorRangos();
-        this.manejadorWinrate = new ManejadorWinrate();
-        
-        // Instanciar los objetos DB necesarios
-        GrupoDB grupoDB = new GrupoDB();
-        this.mensajeDB = new MensajeDB();
-        this.bloqueoDB = new BloqueoDB();
-        this.manejadorAccionesGrupo = new ManejadorAccionesGrupo(grupoDB, mensajeDB);
+    /**
+     * El constructor ahora recibe sus dependencias.
+     */
+    public ManejadorComandos(ManejadorRangos mr, ManejadorWinrate mw, ManejadorAccionesGrupo mag, BloqueoDB bdb, MensajeDB mdb) {
+        this.manejadorRangos = mr;
+        this.manejadorWinrate = mw;
+        this.manejadorAccionesGrupo = mag;
+        this.bloqueoDB = bdb;
+        this.mensajeDB = mdb;
     }
     
-    /**
-     *  Usa la instancia de MensajeDB
-     */
     private boolean existeUsuarioDB(String nombre) {
-        // Llama a MensajeDB
         return this.mensajeDB.existeUsuario(nombre);
     }
 
