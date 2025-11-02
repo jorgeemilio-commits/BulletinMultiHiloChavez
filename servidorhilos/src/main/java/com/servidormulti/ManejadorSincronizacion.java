@@ -27,16 +27,21 @@ public class ManejadorSincronizacion {
     }
 
     /**
+     * NUEVO: Se llama al unirse a un grupo. Descarga TODO el historial.
+     */
+    public void sincronizarHistorialGrupo(UnCliente cliente, String nombreGrupo) throws IOException {
+        cliente.salida.writeUTF("--- Sincronizando historial de '" + nombreGrupo + "'... ---");
+        // Llamamos al método existente empezando desde el mensaje ID 0
+        descargarMensajesGrupo(cliente, nombreGrupo, 0);
+        cliente.salida.writeUTF("--- Historial de '" + nombreGrupo + "' sincronizado. ---");
+    }
+
+    /**
      * Sincroniza todos los mensajes de GRUPO no leídos.
      */
     private void sincronizarGrupos(UnCliente cliente) throws IOException {
         String nombreUsuario = cliente.getNombreUsuario();
         
-        // Esta SQL compleja obtiene:
-        // 1. El nombre del grupo.
-        // 2. El último ID que el usuario vio.
-        // 3. El ID del último mensaje enviado a ese grupo.
-        // 4. Une solo los grupos donde el usuario es miembro.
         String sql = "SELECT g.nombre, COALESCE(e.ultimo_mensaje_id_visto, 0) AS ultimo_visto, " +
                      "(SELECT MAX(m.id) FROM grupos_mensajes m WHERE m.grupo_id = g.id) AS ultimo_existente " +
                      "FROM grupos g " +
@@ -58,7 +63,6 @@ public class ManejadorSincronizacion {
                 long ultimoExistente = rsGrupos.getLong("ultimo_existente");
 
                 if (ultimoVisto < ultimoExistente) {
-                    // Hay mensajes nuevos en este grupo
                     descargarMensajesGrupo(cliente, nombreGrupo, ultimoVisto);
                 }
             }
@@ -85,7 +89,7 @@ public class ManejadorSincronizacion {
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nombreGrupo);
             pstmt.setLong(2, ultimoIdVisto);
-            ResultSet rsMsj = pstmt.executeQuery(); //rsMsj Resultado Mensajes
+            ResultSet rsMsj = pstmt.executeQuery();
             
             while (rsMsj.next()) {
                 long msgId = rsMsj.getLong("id");
@@ -113,7 +117,7 @@ public class ManejadorSincronizacion {
     }
 
     /**
-     * Sincroniza todos los mensajes privados no leídos.
+     * Sincroniza todos los mensajes PRIVADOS no leídos.
      */
     private void sincronizarPrivados(UnCliente cliente) throws IOException {
         String nombreUsuario = cliente.getNombreUsuario();
@@ -126,7 +130,7 @@ public class ManejadorSincronizacion {
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nombreUsuario);
-            ResultSet rs = pstmt.executeQuery(); //rs Resultado
+            ResultSet rs = pstmt.executeQuery();
             
             while (rs.next()) {
                 long msgId = rs.getLong("id");
@@ -136,7 +140,7 @@ public class ManejadorSincronizacion {
                 String msgFormateado = String.format("[Privado de %s]: %s", remitente, contenido);
                 cliente.salida.writeUTF(msgFormateado);
                 
-                // Marcar como visto después de enviarlo
+                // Marcar como visto INMEDIATAMENTE después de enviarlo
                 mensajeDB.marcarPrivadoVisto(msgId);
             }
         } catch (SQLException e) {
