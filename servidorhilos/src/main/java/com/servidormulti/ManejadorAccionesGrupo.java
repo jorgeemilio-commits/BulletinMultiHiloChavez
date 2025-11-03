@@ -7,19 +7,19 @@ public class ManejadorAccionesGrupo {
 
     private final GrupoDB grupoDB;
     private final MensajeDB mensajeDB;
-    private final ManejadorSincronizacion manejadorSincronizacion; // NUEVO
+    private final ManejadorSincronizacion manejadorSincronizacion; 
 
     /**
-     * MODIFICADO: Se añade el sincronizador
+     *  Se añade el sincronizador
      */
     public ManejadorAccionesGrupo(GrupoDB grupoDB, MensajeDB mensajeDB, ManejadorSincronizacion manejadorSincronizacion) {
         this.grupoDB = grupoDB;
         this.mensajeDB = mensajeDB;
-        this.manejadorSincronizacion = manejadorSincronizacion; // NUEVO
+        this.manejadorSincronizacion = manejadorSincronizacion;
     }
 
     /**
-     * Validador simple (sin cambios)
+     * Validador simple
      */
     private boolean validarComando(String[] partes, int longitudEsperada, DataOutputStream salida, UnCliente cliente, String uso) throws IOException {
         if (!cliente.estaLogueado()) {
@@ -34,7 +34,7 @@ public class ManejadorAccionesGrupo {
     }
 
     /**
-     * Maneja /creargrupo <nombre> (sin cambios)
+     * Maneja /creargrupo <nombre> 
      */
     public void crearGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
         if (!validarComando(partes, 2, salida, cliente, "Uso: /creargrupo <nombre_grupo>")) return;
@@ -50,7 +50,7 @@ public class ManejadorAccionesGrupo {
     }
 
     /**
-     * Maneja /borrargrupo <nombre> (sin cambios)
+     * Maneja /borrargrupo <nombre> 
      */
     public void borrarGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
         if (!validarComando(partes, 2, salida, cliente, "Uso: /borrargrupo <nombre_grupo>")) return;
@@ -62,7 +62,6 @@ public class ManejadorAccionesGrupo {
 
     /**
      * Maneja /unirsegrupo <nombre>
-     * MODIFICADO: Ahora llama al sincronizador.
      */
     public void unirseGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
         if (!validarComando(partes, 2, salida, cliente, "Uso: /unirsegrupo <nombre_grupo>")) return;
@@ -73,19 +72,18 @@ public class ManejadorAccionesGrupo {
         String resultado = grupoDB.unirseGrupo(nombreGrupo, nombreUsuario);
         salida.writeUTF(resultado);
         
-        // --- NUEVO ---
         // Si el resultado fue exitoso (o si ya era miembro), sincroniza el historial.
         if (resultado.contains("Te has unido") || resultado.contains("Ya eras miembro")) {
             manejadorSincronizacion.sincronizarHistorialGrupo(cliente, nombreGrupo);
         }
-        // --- FIN NUEVO ---
+
     }
     
     /**
-     * Maneja /saligrupo <nombre> (sin cambios)
+     * Maneja /salirgrupo <nombre> 
      */
     public void salirGrupo(String[] partes, DataOutputStream salida, UnCliente cliente) throws IOException {
-        if (!validarComando(partes, 2, salida, cliente, "Uso: /saligrupo <nombre_grupo>")) return;
+        if (!validarComando(partes, 2, salida, cliente, "Uso: /salirgrupo <nombre_grupo>")) return;
 
         String nombreGrupo = partes[1];
         String nombreUsuario = cliente.getNombreUsuario();

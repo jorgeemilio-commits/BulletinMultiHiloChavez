@@ -9,10 +9,7 @@ import java.util.regex.Pattern;
 
 public class ManejadorMensajes {
 
-    // --- Regex MODIFICADO ---
-    // Antes: ^@g\s+\"([^\"]+)\"\s+(.+)
-    // Ahora: ^#([\w\-]+)\s+(.+)
-    // Captura: #NombreDeGrupo-123 Hola qué tal
+
     private static final Pattern PATRON_GRUPO = Pattern.compile("^#([\\w\\-]+)\\s+(.+)");
 
     private final Map<String, UnCliente> clientesConectados;
@@ -27,7 +24,6 @@ public class ManejadorMensajes {
         this.bloqueoDB = bdb;
     }
 
-    // ... (buscarClienteConectado sigue igual) ...
     private UnCliente buscarClienteConectado(String identificador) {
         UnCliente cliente = clientesConectados.get(identificador);
         if (cliente != null) return cliente;
@@ -59,7 +55,6 @@ public class ManejadorMensajes {
         }
 
         // --- 2. MENSAJE PRIVADO (@usuario ...) ---
-        // (Esta lógica ahora es 100% limpia, no hay conflicto)
         if (mensaje.startsWith("@")) {
             if (!remitente.estaLogueado()) {
                 remitente.salida.writeUTF("Error: Debes iniciar sesión para enviar mensajes privados.");
@@ -76,7 +71,6 @@ public class ManejadorMensajes {
         manejarMensajeGrupo(remitente, "Todos", mensaje);
     }
 
-    // ... (manejarMensajeGrupo sigue igual) ...
     private void manejarMensajeGrupo(UnCliente remitente, String nombreGrupo, String contenido) throws IOException {
         String nombreRemitente = remitente.getNombreUsuario();
         Integer grupoId = grupoDB.getGrupoId(nombreGrupo);
@@ -113,7 +107,6 @@ public class ManejadorMensajes {
         mensajeDB.actualizarEstadoGrupo(nombreRemitente, grupoId, nuevoMensajeId);
     }
 
-    // ... (manejarMensajePrivado sigue igual) ...
     private void manejarMensajePrivado(UnCliente remitente, String mensaje) throws IOException {
         int divMensaje = mensaje.indexOf(" ");
         if (divMensaje == -1) {

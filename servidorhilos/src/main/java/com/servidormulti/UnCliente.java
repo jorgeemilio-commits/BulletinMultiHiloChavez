@@ -99,7 +99,7 @@ public class UnCliente implements Runnable {
                                  "  Mensaje a Grupo:   #NombreGrupo Hola grupo\n" +
                                  "  Mensaje Privado:   @Usuario Hola\n" +
                                  "--- Comandos de Grupos ---\n" +
-                                 "  /creargrupo, /borrargrupo, /unirsegrupo, /saligrupo\n" +
+                                 "  /creargrupo, /borrargrupo, /unirsegrupo, /salirgrupo\n" +
                                  "--- Otros Comandos ---\n" +
                                  "  /login, /registrar, /logout, /block, /unblock\n" +
                                  "  /rangos, /winrate, /jugar, /aceptar, /jugada, /salirjuego");

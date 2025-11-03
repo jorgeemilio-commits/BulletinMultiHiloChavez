@@ -2,16 +2,10 @@ package com.servidormulti;
 
 import java.util.Map;
 
-/**
- * Contenedor de Servicios (Service Container) para Inyección de Dependencias.
- * Crea una sola instancia de cada servicio y las "inyecta" a las clases que
- * las necesitan, en lugar de que cada clase cree las suyas.
- */
 public class ContextoServidor {
 
     // --- CAMPOS PRIVADOS ---
     
-    // CORREGIDO: Este campo faltaba
     private final Map<String, UnCliente> clientesConectados; 
 
     // Instancias Únicas de Servicios (Singleton)
@@ -30,7 +24,7 @@ public class ContextoServidor {
         // Ahora esta línea es válida
         this.clientesConectados = clientesConectados; 
 
-        // 1. Inicializar objetos DB (la base)
+        // 1. Inicializar objetos DB
         this.grupoDB = new GrupoDB();
         this.mensajeDB = new MensajeDB();
         this.bloqueoDB = new BloqueoDB();
@@ -39,19 +33,19 @@ public class ContextoServidor {
         ManejadorRangos manejadorRangos = new ManejadorRangos();
         ManejadorWinrate manejadorWinrate = new ManejadorWinrate();
         
-        // 3. Crear el sincronizador (necesario para el paso 4)
+        // 3. Crear el sincronizador
         this.manejadorSincronizacion = new ManejadorSincronizacion(mensajeDB);
 
-        // 4. Crear el manejador de acciones de grupo (necesita el sincronizador)
+        // 4. Crear el manejador de acciones de grupo 
         ManejadorAccionesGrupo manejadorAccionesGrupo = new ManejadorAccionesGrupo(grupoDB, mensajeDB, this.manejadorSincronizacion);
 
-        // 5. Inicializar manejadores principales (los que usará el cliente)
+        // 5. Inicializar manejadores principales
         this.manejadorComandos = new ManejadorComandos(manejadorRangos, manejadorWinrate, manejadorAccionesGrupo, bloqueoDB, mensajeDB);
         this.manejadorJuegos = new ManejadorJuegos(clientesConectados);
         this.manejadorAutenticacion = new ManejadorAutenticacion();
         this.manejadorMensajes = new ManejadorMensajes(clientesConectados, grupoDB, mensajeDB, bloqueoDB);
         
-        // 6. Inicializar el nuevo enrutador (depende de los manejadores principales)
+        // 6. Inicializar el nuevo enrutador
         this.enrutadorComandos = new EnrutadorComandos(
             this.manejadorComandos, 
             this.manejadorJuegos, 
@@ -60,7 +54,6 @@ public class ContextoServidor {
     }
 
     // --- Getters ---
-    // (Para que UnCliente pueda obtener los servicios que necesita)
 
     public ManejadorMensajes getManejadorMensajes() { return manejadorMensajes; }
     public ManejadorSincronizacion getManejadorSincronizacion() { return manejadorSincronizacion; }
