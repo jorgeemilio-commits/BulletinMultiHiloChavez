@@ -10,6 +10,11 @@ public class ManejadorAutenticacion {
         salida.writeUTF("Introduce tu nombre de usuario:");
         String nombre = entrada.readUTF();
 
+        if (!nombre.matches("^[a-zA-Z0-9]+$")) {
+            salida.writeUTF("Error: El nombre de usuario solo puede contener letras y números (sin espacios ni caracteres especiales).");
+            return false;
+        }
+        
         salida.writeUTF("Introduce tu contraseña:");
         String password = entrada.readUTF();
 

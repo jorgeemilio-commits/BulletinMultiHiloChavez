@@ -110,36 +110,59 @@ public class ManejadorMensajes {
     private void manejarMensajePrivado(UnCliente remitente, String mensaje) throws IOException {
         int divMensaje = mensaje.indexOf(" ");
         if (divMensaje == -1) {
-            remitente.salida.writeUTF("Formato incorrecto. Usa @Nombre_destino contenido.");
+            remitente.salida.writeUTF("Formato incorrecto. Usa @Nombre o @Nombre1-Nombre2 contenido.");
             return;
         }
-        String nombreDestino = mensaje.substring(1, divMensaje);
+
+        String bloqueDestinos = mensaje.substring(1, divMensaje);
         String contenido = mensaje.substring(divMensaje + 1).trim();
         String nombreRemitente = remitente.getNombreUsuario();
-        if (nombreDestino.equalsIgnoreCase(nombreRemitente)) {
-             remitente.salida.writeUTF("No puedes enviarte mensajes privados a ti mismo.");
-             return;
-        }
-        if (!mensajeDB.existeUsuario(nombreDestino)) {
-            remitente.salida.writeUTF("Error: El usuario '" + nombreDestino + "' no existe.");
-            return;
-        }
-        if (bloqueoDB.estaBloqueado(nombreDestino, nombreRemitente)) {
-            remitente.salida.writeUTF("No se pudo entregar el mensaje a '" + nombreDestino + "' (Bloqueo activo).");
-            return;
-        }
-        long nuevoMensajeId = mensajeDB.guardarMensajePrivado(nombreRemitente, nombreDestino, contenido);
-        if (nuevoMensajeId == -1) {
-            remitente.salida.writeUTF("Error al guardar el mensaje privado.");
-            return;
-        }
-        UnCliente clienteDestino = buscarClienteConectado(nombreDestino);
-        if (clienteDestino != null) {
-            String msgFormateado = String.format("[Privado de %s]: %s", nombreRemitente, contenido);
-            clienteDestino.salida.writeUTF(msgFormateado);
-            mensajeDB.marcarPrivadoVisto(nuevoMensajeId);
-        } else {
-            remitente.salida.writeUTF("Mensaje enviado (offline) a '" + nombreDestino + "'.");
-        }
+        
+        // Dividir el bloque de destinatarios por el guion
+        String[] destinatarios = bloqueDestinos.split("-");
+
+        // Iterar sobre cada destinatario
+        for (String nombreDestino : destinatarios) {
+            
+            if (nombreDestino.trim().isEmpty()) continue;
+
+            if (nombreDestino.equalsIgnoreCase(nombreRemitente)) {
+                remitente.salida.writeUTF("No puedes enviarte mensajes privados a ti mismo.");
+                continue; // Saltar al siguiente destinatario
+            }
+
+            // 1. Verificar si el usuario destino existe en la BD
+            if (!mensajeDB.existeUsuario(nombreDestino)) {
+                remitente.salida.writeUTF("Error: El usuario '" + nombreDestino + "' no existe.");
+                continue; // Saltar al siguiente destinatario
+            }
+            
+            // 2. Checar bloqueo
+            if (bloqueoDB.estaBloqueado(nombreDestino, nombreRemitente)) {
+                remitente.salida.writeUTF("No se pudo entregar el mensaje a '" + nombreDestino + "' (Bloqueo activo).");
+                continue; // Saltar al siguiente destinatario
+            }
+            
+            // 3. Guardar el mensaje privado en la BD (estado "no visto")
+            long nuevoMensajeId = mensajeDB.guardarMensajePrivado(nombreRemitente, nombreDestino, contenido);
+            if (nuevoMensajeId == -1) {
+                remitente.salida.writeUTF("Error al guardar el mensaje privado para '" + nombreDestino + "'.");
+                continue; // Saltar al siguiente destinatario
+            }
+            
+            // 4. Intentar entrega si el destino está conectado
+            UnCliente clienteDestino = buscarClienteConectado(nombreDestino);
+            
+            if (clienteDestino != null) {
+                String msgFormateado = String.format("[Privado de %s]: %s", nombreRemitente, contenido);
+                clienteDestino.salida.writeUTF(msgFormateado);
+                
+                // 5. Marcar como "visto"
+                mensajeDB.marcarPrivadoVisto(nuevoMensajeId);
+            } else {
+                // No está conectado, lo verá al iniciar sesión.
+                remitente.salida.writeUTF("Mensaje enviado (offline) a '" + nombreDestino + "'.");
+            }
+        } 
     }
 }
