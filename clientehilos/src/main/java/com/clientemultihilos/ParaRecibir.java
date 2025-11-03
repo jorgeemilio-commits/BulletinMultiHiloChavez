@@ -15,15 +15,15 @@ public class ParaRecibir implements Runnable {
     @Override
     public void run() {
         String mensaje;
-        mensaje = "";
-        while(true){
-            try {
+        
+        try {
+            while(true){
                 mensaje = entrada.readUTF();
                 System.out.println(mensaje);
-            } catch (IOException ex) {
             }
+        } catch (IOException ex) {
+            System.out.println("Conexión con el servidor cerrada.");
         }
     }
 
 }
- 
