@@ -34,8 +34,6 @@ public class ClienteMulti {
 
                 // --- 3. ESPERAR A QUE LA CONEXIÓN MUERA ---
                 // El hilo main se pausará aquí.
-                // hiloParaRecibir solo morirá si el socket se cierra 
-                // (ya sea por el servidor o por el comando /cerrar).
                 hiloParaRecibir.join();
 
             } catch (ConnectException e) {
