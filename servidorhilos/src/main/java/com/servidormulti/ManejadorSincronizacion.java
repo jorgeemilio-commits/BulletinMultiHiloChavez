@@ -119,34 +119,64 @@ public class ManejadorSincronizacion {
     /**
      * Sincroniza todos los mensajes PRIVADOS no leídos.
      */
+
     private void sincronizarPrivados(UnCliente cliente) throws IOException {
         String nombreUsuario = cliente.getNombreUsuario();
-        String sql = "SELECT id, remitente_nombre, contenido FROM mensajes_privados " +
-                     "WHERE destinatario_nombre = ? AND visto = 0 " +
-                     "ORDER BY timestamp ASC";
-        
+        String sqlSelect = "SELECT id, remitente_nombre, contenido FROM mensajes_privados " +
+                           "WHERE destinatario_nombre = ? AND visto = 0 ORDER BY timestamp ASC";
+        String sqlUpdate = "UPDATE mensajes_privados SET visto = 1 WHERE id = ?";
+
         Connection conn = ConexionDB.conectar();
-        if (conn == null) return;
+        if (conn == null) {
+            System.err.println("Error de conexión al sincronizar privados.");
+        return;
+        }
 
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, nombreUsuario);
-            ResultSet rs = pstmt.executeQuery();
+         try (PreparedStatement selectPstmt = conn.prepareStatement(sqlSelect);
+             PreparedStatement updatePstmt = conn.prepareStatement(sqlUpdate)) {
+        
+             conn.setAutoCommit(false); 
+             
+             // 1. Iniciar transacción
+             selectPstmt.setString(1, nombreUsuario);
+
+            // 2. Leer los mensajes no leídos
+            try (ResultSet rs = selectPstmt.executeQuery()) {
             
-            while (rs.next()) {
-                long msgId = rs.getLong("id");
-                String remitente = rs.getString("remitente_nombre");
-                String contenido = rs.getString("contenido");
+            // 3. Recorrer los mensajes
+                while (rs.next()) {
+                    long msgId = rs.getLong("id");
+                    String remitente = rs.getString("remitente_nombre");
+                    String contenido = rs.getString("contenido");
+                
+                    String msgFormateado = String.format("[Privado de %s]: %s", remitente, contenido);
 
-                String msgFormateado = String.format("[Privado de %s]: %s", remitente, contenido);
+                // 3a. Enviarlos al cliente
                 cliente.salida.writeUTF(msgFormateado);
                 
-                // Marcar como visto INMEDIATAMENTE después de enviarlo
-                mensajeDB.marcarPrivadoVisto(msgId);
+                // 3b. Declarar el mensaje como visto
+                updatePstmt.setLong(1, msgId);
+                updatePstmt.addBatch();
             }
-        } catch (SQLException e) {
-            System.err.println("Error al sincronizar privados: " + e.getMessage());
-        } finally {
-            ConexionDB.cerrarConexion(conn);
         }
+        
+        // 4. Ejecuta todas las actualizaciones de una vez
+        updatePstmt.executeBatch();
+        
+        // 5. Confirmar la transacción
+        conn.commit(); 
+
+    } catch (SQLException | IOException e) { // Capturamos cualquier error 
+        System.err.println("Error al sincronizar privados, revirtiendo: " + e.getMessage());
+        try {
+            conn.rollback(); // Si algo falla, revertimos todo
+        } catch (SQLException ex) {
+            System.err.println("Error al hacer rollback: " + ex.getMessage());
+        }
+    } finally {
+        // Restauramos el estado de la conexión y la cerramos
+        try { conn.setAutoCommit(true); } catch (SQLException e) { /* ign */ }
+        ConexionDB.cerrarConexion(conn);
     }
+  }
 }
