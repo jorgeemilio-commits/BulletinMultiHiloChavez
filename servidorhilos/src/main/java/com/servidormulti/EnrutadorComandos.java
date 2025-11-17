@@ -103,7 +103,7 @@ public class EnrutadorComandos {
             manejadorComandos.manejarUnirseGrupo(partes, salida, cliente);
             return;
         }
-        // (Arreglo del bug de tipeo que encontramos antes)
+
         if (comando.equals("/salirgrupo")) { 
             manejadorComandos.manejarSalirGrupo(partes, salida, cliente);
             return;
@@ -119,6 +119,17 @@ public class EnrutadorComandos {
             return;
         }
         
+        // --- Comando de Conectados (Delega a ManejadorComandos) ---
+        if (comando.equals("/conectados")) {
+            manejadorComandos.manejarConectados(salida);
+            return;
+        }
+
+        if (comando.equals("/ayuda")) {
+            manejadorComandos.manejarAyuda(salida, cliente);
+            return;
+        }
+
         // Comando desconocido
         salida.writeUTF("Comando '" + comando + "' no reconocido.");
     }

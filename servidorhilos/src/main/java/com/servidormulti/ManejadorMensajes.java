@@ -64,10 +64,7 @@ public class ManejadorMensajes {
             return;
         }
         
-        // --- 3. MENSAJE A "Todos" (Default) ---
-        if (!remitente.estaLogueado()) {
-            remitente.incrementarMensajesEnviados();
-        }
+        // --- 3. MENSAJE GENERAL A TODOS ---
         manejarMensajeGrupo(remitente, "Todos", mensaje);
     }
 

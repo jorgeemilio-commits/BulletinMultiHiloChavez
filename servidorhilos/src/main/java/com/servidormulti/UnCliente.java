@@ -16,6 +16,9 @@ public class UnCliente implements Runnable {
     private final ManejadorSincronizacion manejadorSincronizacion;
     private final EnrutadorComandos enrutadorComandos; // El nuevo enrutador
     
+    // --- CAMBIO (Punto 9): Constante para el límite ---
+    private static final int LIMITE_MENSAJES_INVITADO = 3;
+    
     // estado del cliente
     private String nombreUsuario; 
     private int mensajesEnviados = 0;
@@ -55,21 +58,22 @@ public class UnCliente implements Runnable {
     
     
     /**
-     *  Llama al sincronizador inyectado.
+     * Aplica el estado de login y sincroniza mensajes.
      */
     public boolean manejarLoginInterno(String nombre, String password) throws IOException {
-       try {
+        
+        try {
             this.nombreUsuario = nombre; 
             this.logueado = true;
-                // Auto-unirse al grupo "Todos"
-            new GrupoDB().unirseGrupo("Todos", nombre);
-            // Usa el sincronizador inyectado
+            
+            new GrupoDB().unirseGrupo("Todos", nombre); 
+            
             this.manejadorSincronizacion.sincronizarMensajesPendientes(this);
+            
             return true;
+
         } catch (Exception e) {
-            // Si la sincronización o unirse a grupo falla, el login falló.
-            System.err.println("Error en la fase de login para " + nombre + ": " + e.getMessage());
-            // Revertimos el estado si falla
+            System.err.println("Error en la fase final de login para " + nombre + ": " + e.getMessage());
             this.logueado = false;
             this.nombreUsuario = "Invitado-" + this.clienteID;
             return false;
@@ -88,19 +92,21 @@ public class UnCliente implements Runnable {
         }
     }
     
+    /**
+     * MÉTODO RUN() SIMPLIFICADO Y CON LÓGICA DE LÍMITE
+     */
     @Override
     public void run() {
         try {
             this.salida.writeUTF("Bienvenido. Tu nombre actual es: " + this.nombreUsuario + "\n" +
-                                 "--- Comandos de Mensajes ---\n" +
+                                 "--- Comandos Básicos ---\n" +
                                  "  Mensaje a 'Todos': Hola a todos\n" +
                                  "  Mensaje a Grupo:   #NombreGrupo Hola grupo\n" +
                                  "  Mensaje Privado:   @Usuario Hola\n" +
-                                 "--- Comandos de Grupos ---\n" +
-                                 "  /creargrupo, /borrargrupo, /unirsegrupo, /salirgrupo\n" +
-                                 "--- Otros Comandos ---\n" +
-                                 "  /login, /registrar, /logout, /block, /unblock\n" +
-                                 "  /rangos, /winrate, /jugar, /aceptar, /jugada, /salirjuego");
+                                 "  /login             - Inicia sesión\n" +
+                                 "  /registrar         - Crea una nueva cuenta\n" +
+                                 "--- Para más comandos, escribe: /ayuda ---");
+
         } catch (IOException e) { System.err.println("Error de bienvenida: " + e.getMessage()); }
 
         while (true) {
@@ -109,17 +115,36 @@ public class UnCliente implements Runnable {
 
                 if (mensaje.startsWith("/")) {
                     
-                    // 1. Delega toods los comandos al nuevo Enrutador
+                    // --- Lógica de límite para COMANDOS ---
+                    if (!this.logueado) {
+                        String comando = mensaje.trim().split(" ", 2)[0].toLowerCase();
+
+                        // Comandos permitidos que NO cuentan para el límite
+                        boolean esComandoExcluido = comando.equals("/login") || 
+                                                    comando.equals("/registrar") ||
+                                                    comando.equals("/ayuda"); // Ayuda tampoco debe contar
+
+                        if (!esComandoExcluido) {
+                            // Es un comando restringido (ej. /block, /jugar, /creargrupo)
+                            if (this.mensajesEnviados >= LIMITE_MENSAJES_INVITADO) {
+                                this.salida.writeUTF("Límite de acciones alcanzado. Por favor, inicia sesión para continuar.");
+                                continue;
+                            }
+                            this.incrementarMensajesEnviados(); // Cuenta como un mensaje
+                        }
+                    }
+                    
                     enrutadorComandos.procesar(this, mensaje, entrada, salida);
 
                 } else {
                     
-                    // 2. Delegar todos los mensajes al Manejador de Mensajes
-                    
-                    // Límite de mensajes para invitados
-                    if (!this.logueado && !mensaje.startsWith("@") && this.mensajesEnviados >= 3) {
-                        this.salida.writeUTF("Límite de 3 mensajes alcanzado. Por favor, inicia sesión.");
-                        continue;
+                    // --- Lógica de límite para MENSAJES ---
+                    if (!this.logueado) {
+                        if (this.mensajesEnviados >= LIMITE_MENSAJES_INVITADO) {
+                            this.salida.writeUTF("Límite de mensajes alcanzado. Por favor, inicia sesión.");
+                            continue;
+                        }
+                        this.incrementarMensajesEnviados(); // Cuenta como un mensaje
                     }
                     
                     manejadorMensajes.enrutarMensaje(this, mensaje);

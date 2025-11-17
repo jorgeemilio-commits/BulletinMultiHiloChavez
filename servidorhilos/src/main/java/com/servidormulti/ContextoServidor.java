@@ -40,9 +40,20 @@ public class ContextoServidor {
         ManejadorAccionesGrupo manejadorAccionesGrupo = new ManejadorAccionesGrupo(grupoDB, mensajeDB, this.manejadorSincronizacion);
 
         // 5. Inicializar manejadores principales
-        this.manejadorComandos = new ManejadorComandos(manejadorRangos, manejadorWinrate, manejadorAccionesGrupo, bloqueoDB, mensajeDB);
-        this.manejadorJuegos = new ManejadorJuegos(clientesConectados, this.bloqueoDB);
-        this.manejadorAutenticacion = new ManejadorAutenticacion(clientesConectados);
+        
+        // Ahora le pasamos la lista de clientes al ManejadorComandos
+        this.manejadorComandos = new ManejadorComandos(
+            manejadorRangos, 
+            manejadorWinrate, 
+            manejadorAccionesGrupo, 
+            bloqueoDB, 
+            mensajeDB,
+            clientesConectados 
+        );
+       
+
+        this.manejadorJuegos = new ManejadorJuegos(clientesConectados, bloqueoDB); // (Modificado en el paso anterior)
+        this.manejadorAutenticacion = new ManejadorAutenticacion(clientesConectados); // (Modificado en el paso anterior)
         this.manejadorMensajes = new ManejadorMensajes(clientesConectados, grupoDB, mensajeDB, bloqueoDB);
         
         // 6. Inicializar el nuevo enrutador
