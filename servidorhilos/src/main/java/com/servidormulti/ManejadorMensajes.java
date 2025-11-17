@@ -90,21 +90,34 @@ public class ManejadorMensajes {
             miembros = grupoDB.getMiembrosGrupo(grupoId);
         }
         String msgFormateado = String.format("<%s> %s: %s", nombreGrupo, nombreRemitente, contenido);
+        
         for (String identificadorMiembro : miembros) {
             UnCliente clienteDestino = buscarClienteConectado(identificadorMiembro);
+            
             if (clienteDestino != null && !clienteDestino.clienteID.equals(remitente.clienteID)) {
+                
                 if (clienteDestino.estaLogueado()) {
-                    // (Esta verificación ya estaba y es correcta)
-                    if (bloqueoDB.estaBloqueado(clienteDestino.getNombreUsuario(), nombreRemitente)) {
-                        continue;
+                    
+                    String nombreDestino = clienteDestino.getNombreUsuario();
+
+                    if (bloqueoDB.estaBloqueado(nombreDestino, nombreRemitente)) {
+                        continue; 
                     }
+
+                    if (bloqueoDB.estaBloqueado(nombreRemitente, nombreDestino)) {
+                        continue; 
+                    }
+
                 }
+
                 clienteDestino.salida.writeUTF(msgFormateado);
+                
                 if (clienteDestino.estaLogueado()) {
                     mensajeDB.actualizarEstadoGrupo(clienteDestino.getNombreUsuario(), grupoId, nuevoMensajeId);
                 }
             }
         }
+        // Actualiza el estado para el propio remitente (para que no reciba sus propios mensajes)
         mensajeDB.actualizarEstadoGrupo(nombreRemitente, grupoId, nuevoMensajeId);
     }
 

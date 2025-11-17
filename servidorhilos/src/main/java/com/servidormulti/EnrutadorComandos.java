@@ -44,12 +44,24 @@ public class EnrutadorComandos {
             return;
         }
         
-        // --- Comandos de Autenticación ---
+        
         if (comando.equals("/registrar")) {
+
+            if (cliente.estaLogueado()) {
+                salida.writeUTF("Error: Ya has iniciado sesión. Debes usar /logout primero.");
+                return;
+            }
+
             manejadorAutenticacion.manejarRegistro(entrada, salida, cliente);
             return;
         }
         if (comando.equals("/login")) {
+
+            if (cliente.estaLogueado()) {
+                salida.writeUTF("Error: Ya has iniciado sesión como '" + cliente.getNombreUsuario() + "'.");
+                return;
+            }
+
             manejadorAutenticacion.manejarLogin(entrada, salida, cliente);
             return;
         }
@@ -91,7 +103,8 @@ public class EnrutadorComandos {
             manejadorComandos.manejarUnirseGrupo(partes, salida, cliente);
             return;
         }
-        if (comando.equals("/saligrupo")) {
+        // (Arreglo del bug de tipeo que encontramos antes)
+        if (comando.equals("/salirgrupo")) { 
             manejadorComandos.manejarSalirGrupo(partes, salida, cliente);
             return;
         }
