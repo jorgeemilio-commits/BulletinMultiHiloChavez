@@ -13,7 +13,6 @@ public class ServidorMulti {
 
     public static void main(String[] args) throws IOException {
         
-        // --- Inicializar el Contexto del Servidor una vez ---
         ContextoServidor contexto = new ContextoServidor(clientes);
         System.out.println("Servicios del servidor inicializados.");
         
@@ -23,7 +22,6 @@ public class ServidorMulti {
                 Socket s = servidorSocket.accept();
                 String clienteId = String.valueOf(contadorClientes.incrementAndGet());
             
-                // --- Inyecta el contexto en el cliente ---
                 UnCliente unCliente = new UnCliente(s, clienteId, contexto);
                 
                 Thread hilo = new Thread(unCliente, "Cliente-" + clienteId);

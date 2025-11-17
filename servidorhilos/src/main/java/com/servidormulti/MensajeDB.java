@@ -120,7 +120,6 @@ public class MensajeDB {
      * Actualiza el último mensaje que un usuario vio en un grupo.
      */
     public void actualizarEstadoGrupo(String usuario, int grupoId, long ultimoMsgIdVisto) {
-        // INSERT OR REPLACE (UPSERT) es útil aquí.
         String sql = "INSERT OR REPLACE INTO grupos_estado_usuario (usuario_nombre, grupo_id, ultimo_mensaje_id_visto) VALUES (?, ?, ?)";
         Connection conn = ConexionDB.conectar();
         if (conn == null) return;

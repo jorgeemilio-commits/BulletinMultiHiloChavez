@@ -86,13 +86,9 @@ public class UnCliente implements Runnable {
         }
     }
     
-    /**
-     * MÉTODO RUN() SIMPLIFICADO
-     */
     @Override
     public void run() {
         try {
-            // ... (Mensaje de bienvenida sin cambios) ...
             this.salida.writeUTF("Bienvenido. Tu nombre actual es: " + this.nombreUsuario + "\n" +
                                  "--- Comandos de Mensajes ---\n" +
                                  "  Mensaje a 'Todos': Hola a todos\n" +
