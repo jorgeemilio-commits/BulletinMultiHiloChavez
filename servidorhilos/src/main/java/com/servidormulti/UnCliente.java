@@ -58,20 +58,22 @@ public class UnCliente implements Runnable {
      *  Llama al sincronizador inyectado.
      */
     public boolean manejarLoginInterno(String nombre, String password) throws IOException {
-        Login login = new Login();
-        if (login.iniciarSesion(nombre, password)) {
+       try {
             this.nombreUsuario = nombre; 
             this.logueado = true;
-            
-            // (Se puede optimizar, pero por ahora está bien)
-            new GrupoDB().unirseGrupo("Todos", nombre); 
-            
+                // Auto-unirse al grupo "Todos"
+            new GrupoDB().unirseGrupo("Todos", nombre);
             // Usa el sincronizador inyectado
             this.manejadorSincronizacion.sincronizarMensajesPendientes(this);
-            
             return true;
+        } catch (Exception e) {
+            // Si la sincronización o unirse a grupo falla, el login falló.
+            System.err.println("Error en la fase de login para " + nombre + ": " + e.getMessage());
+            // Revertimos el estado si falla
+            this.logueado = false;
+            this.nombreUsuario = "Invitado-" + this.clienteID;
+            return false;
         }
-        return false;
     }
     
     public void manejarLogoutInterno() {

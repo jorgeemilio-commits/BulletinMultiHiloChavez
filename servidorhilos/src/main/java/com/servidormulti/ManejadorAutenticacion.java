@@ -3,8 +3,16 @@ package com.servidormulti;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Map; 
 
 public class ManejadorAutenticacion {
+
+    private final Map<String, UnCliente> clientesConectados;
+
+    public ManejadorAutenticacion(Map<String, UnCliente> clientes) {
+        this.clientesConectados = clientes;
+    }
+
 
     public boolean manejarRegistro(DataInputStream entrada, DataOutputStream salida, UnCliente cliente) throws IOException {
         salida.writeUTF("Introduce tu nombre de usuario:");
@@ -48,11 +56,34 @@ public class ManejadorAutenticacion {
         salida.writeUTF("Introduce tu contraseña:");
         String password = entrada.readUTF();
 
-        if (cliente.manejarLoginInterno(nombre, password)) {
+        // 1. Verificar si este cliente YA está logueado
+        if (cliente.estaLogueado()) {
+            salida.writeUTF("Error: Ya has iniciado sesión como '" + cliente.getNombreUsuario() + "'.");
+            return false;
+        }
+
+        // 2. Verificar credenciales 
+        Login login = new Login(); 
+        if (!login.iniciarSesion(nombre, password)) {
+            salida.writeUTF("Credenciales incorrectas. Intenta de nuevo.");
+            return false;
+        }
+
+        // 3. Buscar si alguien ya usa ese nombre
+        for (UnCliente clienteActivo : clientesConectados.values()) {
+            if (clienteActivo.getNombreUsuario().equalsIgnoreCase(nombre)) {
+                // Rechazar el login
+                salida.writeUTF("Error: El usuario '" + nombre + "' ya está conectado en otra sesión.");
+                return false;
+            }
+        }
+
+        // 4. Proceder con el login
+        if (cliente.manejarLoginInterno(nombre, password)) { 
             salida.writeUTF("Inicio de sesión exitoso. Tu nuevo nombre es: " + cliente.getNombreUsuario() + ". Ahora puedes enviar mensajes sin límite.");
             return true;
         } else {
-            salida.writeUTF("Credenciales incorrectas. Intenta de nuevo.");
+            salida.writeUTF("Error interno al intentar iniciar sesión.");
             return false;
         }
     }
