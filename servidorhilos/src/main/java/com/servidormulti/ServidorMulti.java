@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger; // Importar
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ServidorMulti {
 

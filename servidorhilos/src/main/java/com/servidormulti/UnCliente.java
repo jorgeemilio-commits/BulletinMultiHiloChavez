@@ -14,9 +14,9 @@ public class UnCliente implements Runnable {
     
     private final ManejadorMensajes manejadorMensajes;
     private final ManejadorSincronizacion manejadorSincronizacion;
-    private final EnrutadorComandos enrutadorComandos; // El nuevo enrutador
+    private final EnrutadorComandos enrutadorComandos; 
     
-    // --- CAMBIO (Punto 9): Constante para el límite ---
+    // Constante para el límite ---
     private static final int LIMITE_MENSAJES_INVITADO = 3;
     
     // estado del cliente
@@ -127,7 +127,7 @@ public class UnCliente implements Runnable {
                         if (!esComandoExcluido) {
                             // Es un comando restringido (ej. /block, /jugar, /creargrupo)
                             if (this.mensajesEnviados >= LIMITE_MENSAJES_INVITADO) {
-                                this.salida.writeUTF("Límite de acciones alcanzado. Por favor, inicia sesión para continuar.");
+                                this.salida.writeUTF("Límite de acciones alcanzado. Por favor, inicia sesión para continuar con /login o /register.");
                                 continue;
                             }
                             this.incrementarMensajesEnviados(); // Cuenta como un mensaje
