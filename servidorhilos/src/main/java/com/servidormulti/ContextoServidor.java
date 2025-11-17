@@ -41,7 +41,7 @@ public class ContextoServidor {
 
         // 5. Inicializar manejadores principales
         this.manejadorComandos = new ManejadorComandos(manejadorRangos, manejadorWinrate, manejadorAccionesGrupo, bloqueoDB, mensajeDB);
-        this.manejadorJuegos = new ManejadorJuegos(clientesConectados);
+        this.manejadorJuegos = new ManejadorJuegos(clientesConectados, this.bloqueoDB);
         this.manejadorAutenticacion = new ManejadorAutenticacion(clientesConectados);
         this.manejadorMensajes = new ManejadorMensajes(clientesConectados, grupoDB, mensajeDB, bloqueoDB);
         

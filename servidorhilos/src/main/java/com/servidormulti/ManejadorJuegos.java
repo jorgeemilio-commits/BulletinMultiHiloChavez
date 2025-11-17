@@ -10,18 +10,21 @@ public class ManejadorJuegos {
     private final Map<String, UnCliente> clientes;
     private static final AtomicLong gameIdCounter = new AtomicLong(0); // Contador atómico para IDs únicos
 
-    public ManejadorJuegos(Map<String, UnCliente> clientes) {
+    private final BloqueoDB bloqueoDB;
+
+    public ManejadorJuegos(Map<String, UnCliente> clientes, BloqueoDB bdb) {
         this.clientes = clientes;
+        this.bloqueoDB = bdb; // Guardamos la referencia
     }
 
     private UnCliente buscarCliente(String identificador) {
-        // busca por ID numerico
+        // Busca por ID numerico
         UnCliente cliente = clientes.get(identificador);
         if (cliente != null) {
             return cliente;
         }
 
-        // si no lo encuentra por ID, lo busca por nombre de usuario
+        // Si no lo encuentra por ID, lo busca por nombre de usuario
         for (UnCliente c : clientes.values()) {
             if (c.getNombreUsuario().equalsIgnoreCase(identificador)) {
                 return c;
@@ -46,8 +49,9 @@ public class ManejadorJuegos {
         }
         
         String nombreOponente = partes[1];
+        String nombreRetador = retador.getNombreUsuario(); 
         
-        if (nombreOponente.equalsIgnoreCase(retador.getNombreUsuario())) {
+        if (nombreOponente.equalsIgnoreCase(nombreRetador)) { 
             salida.writeUTF("No puedes jugar contigo mismo.");
             return;
         }
@@ -59,10 +63,20 @@ public class ManejadorJuegos {
             return;
         }
         
+        // (Verificar ambas direcciones)
+        if (bloqueoDB.estaBloqueado(nombreRetador, nombreOponente)) {
+            salida.writeUTF("No puedes retar a '" + nombreOponente + "' porque lo tienes bloqueado.");
+            return;
+        }
+        if (bloqueoDB.estaBloqueado(nombreOponente, nombreRetador)) {
+            salida.writeUTF("No puedes retar a '" + nombreOponente + "' porque te ha bloqueado.");
+            return;
+        }
+        
         // Enviar la invitación
-        oponente.setOponentePendiente(retador.getNombreUsuario());
-        oponente.salida.writeUTF("¡RETO DE GATO! '" + retador.getNombreUsuario() + "' te ha retado a una partida.");
-        oponente.salida.writeUTF("Escribe /aceptar " + retador.getNombreUsuario() + " para comenzar.");
+        oponente.setOponentePendiente(nombreRetador); 
+        oponente.salida.writeUTF("¡RETO DE GATO! '" + nombreRetador + "' te ha retado a una partida.");
+        oponente.salida.writeUTF("Escribe /aceptar " + nombreRetador + " para comenzar.");
         
         salida.writeUTF("Invitación enviada a '" + nombreOponente + "'. Esperando respuesta...");
     }
@@ -94,7 +108,7 @@ public class ManejadorJuegos {
         
         if (retador == null) {
             salida.writeUTF("Tu retador ('" + nombreRetador + "') ya no está conectado.");
-            aceptador.setOponentePendiente(null); // Limpiar la invitación
+            aceptador.setOponentePendiente(null); 
             return;
         }
         

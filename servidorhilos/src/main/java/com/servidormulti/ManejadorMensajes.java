@@ -94,6 +94,7 @@ public class ManejadorMensajes {
             UnCliente clienteDestino = buscarClienteConectado(identificadorMiembro);
             if (clienteDestino != null && !clienteDestino.clienteID.equals(remitente.clienteID)) {
                 if (clienteDestino.estaLogueado()) {
+                    // (Esta verificación ya estaba y es correcta)
                     if (bloqueoDB.estaBloqueado(clienteDestino.getNombreUsuario(), nombreRemitente)) {
                         continue;
                     }
@@ -137,11 +138,19 @@ public class ManejadorMensajes {
                 continue; // Saltar al siguiente destinatario
             }
             
-            // 2. Checar bloqueo
+            // 2. Checar bloqueo (DESTINO bloqueó al REMITENTE)
             if (bloqueoDB.estaBloqueado(nombreDestino, nombreRemitente)) {
                 remitente.salida.writeUTF("No se pudo entregar el mensaje a '" + nombreDestino + "' (Bloqueo activo).");
                 continue; // Saltar al siguiente destinatario
             }
+            
+            // --- CAMBIO (Bug 3): Añadir esta verificación ---
+            // (REMITENTE bloqueó al DESTINO)
+            if (bloqueoDB.estaBloqueado(nombreRemitente, nombreDestino)) {
+                remitente.salida.writeUTF("No puedes enviar mensajes a '" + nombreDestino + "' porque lo tienes bloqueado.");
+                continue; // Saltar al siguiente destinatario
+            }
+            // --- FIN DEL CAMBIO ---
             
             // 3. Guardar el mensaje privado en la BD (estado "no visto")
             long nuevoMensajeId = mensajeDB.guardarMensajePrivado(nombreRemitente, nombreDestino, contenido);
